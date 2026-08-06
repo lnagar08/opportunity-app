@@ -1,0 +1,550 @@
+// ==========================================================
+// Opportunity Seeker / Opportunity Giver Platform
+// Full Database Schema (Prisma + PostgreSQL)
+// ==========================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------------------
+// ENUMS
+// ------------------------------------------------------------------
+
+enum UserRole {
+  SEEKER
+  GIVER
+  ADMIN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum CertificateStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum BudgetType {
+  FIXED
+  NEGOTIABLE
+}
+
+enum WorkMode {
+  REMOTE
+  ONSITE
+  HYBRID
+}
+
+enum OpportunityStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+  DELETED
+}
+
+enum ApplicationStatus {
+  PENDING
+  SHORTLISTED
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum AttachmentType {
+  IMAGE
+  AUDIO
+  VIDEO
+  PDF
+}
+
+enum MediaOwnerType {
+  OPPORTUNITY
+  PORTFOLIO
+  APPLICATION
+  MESSAGE
+}
+
+enum OtpPurpose {
+  REGISTRATION
+  LOGIN
+  FORGOT_PASSWORD
+  CHANGE_MOBILE
+}
+
+enum NotificationType {
+  NEW_APPLICATION
+  NEW_MESSAGE
+  CERTIFICATE_APPROVED
+  CERTIFICATE_REJECTED
+  OPPORTUNITY_CLOSED
+  APPLICATION_STATUS_CHANGED
+  GENERAL
+}
+
+enum ReportTargetType {
+  USER
+  OPPORTUNITY
+  MESSAGE
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  DISMISSED
+  ACTION_TAKEN
+}
+
+// ------------------------------------------------------------------
+// CORE USER TABLES
+// ------------------------------------------------------------------
+
+model User {
+  id                  String        @id @default(uuid())
+  fullName            String
+  mobileNumber        String        @unique
+  email               String?       @unique
+  passwordHash        String
+  role                UserRole
+  profilePhotoUrl     String?
+  city                String?
+  state               String?
+  isMobileVerified    Boolean       @default(false)
+  acceptedTerms       Boolean       @default(false)
+  status              AccountStatus @default(ACTIVE)
+  fcmToken            String?
+  lastLoginAt         DateTime?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  seekerProfile       SeekerProfile?
+  giverProfile        GiverProfile?
+
+  opportunities       Opportunity[]        @relation("GiverOpportunities")
+  applications        Application[]        @relation("SeekerApplications")
+
+  sentMessages        Message[]            @relation("SenderMessages")
+  conversationsAsA     Conversation[]       @relation("ConversationUserA")
+  conversationsAsB     Conversation[]       @relation("ConversationUserB")
+
+  notifications       Notification[]
+  otps                OtpVerification[]
+  notificationPref    NotificationPreference?
+  reportsFiled         Report[]            @relation("ReportedBy")
+  reportsAgainst        Report[]            @relation("ReportedUser")
+
+  @@map("users")
+}
+
+model SeekerProfile {
+  id                    String            @id @default(uuid())
+  userId                String            @unique
+  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  dateOfBirth           DateTime
+  gender                Gender?
+  disabilityTypeId      String
+  disabilityType        DisabilityType    @relation(fields: [disabilityTypeId], references: [id])
+  disabilityCertificateUrl String
+  certificateStatus     CertificateStatus @default(PENDING)
+  certificateRejectReason String?
+
+  bio                   String?
+  availableForRemote    Boolean           @default(false)
+  willingToTravel       Boolean           @default(false)
+  isProfileCompleted    Boolean           @default(false)
+
+  createdAt             DateTime          @default(now())
+  updatedAt              DateTime         @updatedAt
+
+  education             Education[]
+  experience             Experience[]
+  skills                 SeekerSkill[]
+  awards                 Award[]
+  certifications          Certification[]
+  portfolioItems           Portfolio[]
+  applications             Application[]  @relation("SeekerProfileApplications")
+
+  @@map("seeker_profiles")
+}
+
+model GiverProfile {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationName  String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("giver_profiles")
+}
+
+// ------------------------------------------------------------------
+// SEEKER PROFILE SUB-SECTIONS
+// ------------------------------------------------------------------
+
+model Education {
+  id                String        @id @default(uuid())
+  seekerProfileId   String
+  seekerProfile     SeekerProfile @relation(fields: [seekerProfileId], references: [id], onDelete: Cascade)
+
+  institution       String
+  degree            String
+  fieldOfStudy      String?
+  startYear         Int
+  endYear           Int?
+  currentlyStudying Boolean       @default(false)
+
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@map("educations")
+}
+
+model Experience {
+  id                String        @id @default(uuid())
+  seekerProfileId   String
+  seekerProfile     SeekerProfile @relation(fields: [seekerProfileId], references: [id], onDelete: Cascade)
+
+  organization      String
+  position          String
+  description       String?
+  startDate         DateTime
+  endDate           DateTime?
+  currentlyWorking  Boolean       @default(false)
+  fresher           Boolean       @default(false)
+
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@map("experiences")
+}
+
+model SeekerSkill {
+  id                String        @id @default(uuid())
+  seekerProfileId   String
+  seekerProfile     SeekerProfile @relation(fields: [seekerProfileId], references: [id], onDelete: Cascade)
+  skillName         String
+
+  createdAt         DateTime      @default(now())
+
+  @@map("seeker_skills")
+}
+
+model Award {
+  id                String        @id @default(uuid())
+  seekerProfileId   String
+  seekerProfile     SeekerProfile @relation(fields: [seekerProfileId], references: [id], onDelete: Cascade)
+
+  awardName         String
+  organization      String?
+  year              Int
+
+  createdAt         DateTime      @default(now())
+
+  @@map("awards")
+}
+
+model Certification {
+  id                  String        @id @default(uuid())
+  seekerProfileId     String
+  seekerProfile       SeekerProfile @relation(fields: [seekerProfileId], references: [id], onDelete: Cascade)
+
+  certificationName   String
+  issuedBy            String?
+  date                DateTime
+
+  createdAt           DateTime      @default(now())
+
+  @@map("certifications")
+}
+
+model Portfolio {
+  id                String        @id @default(uuid())
+  seekerProfileId   String
+  seekerProfile     SeekerProfile @relation(fields: [seekerProfileId], references: [id], onDelete: Cascade)
+
+  title             String
+  description       String?
+
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  media             Media[]       @relation("PortfolioMedia")
+
+  @@map("portfolios")
+}
+
+// ------------------------------------------------------------------
+// MASTER DATA
+// ------------------------------------------------------------------
+
+model DisabilityType {
+  id        String          @id @default(uuid())
+  name      String          @unique
+  isActive  Boolean         @default(true)
+  createdAt DateTime        @default(now())
+
+  seekers   SeekerProfile[]
+
+  @@map("disability_types")
+}
+
+model Category {
+  id            String                @id @default(uuid())
+  name          String                @unique
+  isActive      Boolean               @default(true)
+  createdAt     DateTime              @default(now())
+
+  opportunities OpportunityCategory[]
+
+  @@map("categories")
+}
+
+// ------------------------------------------------------------------
+// OPPORTUNITY (GIVER)
+// ------------------------------------------------------------------
+
+model Opportunity {
+  id              String            @id @default(uuid())
+  giverId         String
+  giver           User              @relation("GiverOpportunities", fields: [giverId], references: [id], onDelete: Cascade)
+
+  title           String
+  description     String
+  budgetType      BudgetType
+  budgetAmount    Decimal?          @db.Decimal(12, 2)
+  workMode        WorkMode
+  city            String?
+  state           String?
+  latitude        Float?
+  longitude       Float?
+  opportunityDate DateTime?
+  opportunityTime String?
+  status          OpportunityStatus @default(ACTIVE)
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  categories      OpportunityCategory[]
+  media           Media[]           @relation("OpportunityMedia")
+  applications    Application[]
+
+  @@map("opportunities")
+}
+
+model OpportunityCategory {
+  id            String      @id @default(uuid())
+  opportunityId String
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  categoryId    String
+  category      Category    @relation(fields: [categoryId], references: [id])
+
+  @@unique([opportunityId, categoryId])
+  @@map("opportunity_categories")
+}
+
+// ------------------------------------------------------------------
+// APPLICATIONS (SEEKER -> OPPORTUNITY)
+// ------------------------------------------------------------------
+
+model Application {
+  id                String            @id @default(uuid())
+  opportunityId     String
+  opportunity       Opportunity       @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  seekerId          String
+  seeker            User              @relation("SeekerApplications", fields: [seekerId], references: [id], onDelete: Cascade)
+
+  seekerProfileId   String
+  seekerProfile     SeekerProfile     @relation("SeekerProfileApplications", fields: [seekerProfileId], references: [id])
+
+  proposal          String
+  proposedBudget    Decimal?          @db.Decimal(12, 2)
+  questions         String?
+  status            ApplicationStatus @default(PENDING)
+  appliedAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  media             Media[]           @relation("ApplicationMedia")
+
+  @@unique([opportunityId, seekerId])
+  @@map("applications")
+}
+
+// ------------------------------------------------------------------
+// SHARED MEDIA TABLE (images / audio / video / pdf)
+// ------------------------------------------------------------------
+
+model Media {
+  id              String          @id @default(uuid())
+  ownerType       MediaOwnerType
+  type            AttachmentType
+  url             String
+  fileName        String?
+  sizeBytes       Int?
+  createdAt       DateTime        @default(now())
+
+  opportunityId   String?
+  opportunity     Opportunity?    @relation("OpportunityMedia", fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  portfolioId     String?
+  portfolio       Portfolio?      @relation("PortfolioMedia", fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  applicationId   String?
+  application     Application?    @relation("ApplicationMedia", fields: [applicationId], references: [id], onDelete: Cascade)
+
+  messageId       String?
+  message         Message?        @relation("MessageMedia", fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@map("media")
+}
+
+// ------------------------------------------------------------------
+// MESSAGING
+// ------------------------------------------------------------------
+
+model Conversation {
+  id            String    @id @default(uuid())
+
+  userAId       String
+  userA         User      @relation("ConversationUserA", fields: [userAId], references: [id])
+
+  userBId       String
+  userB         User      @relation("ConversationUserB", fields: [userBId], references: [id])
+
+  applicationId String?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  messages      Message[]
+
+  @@unique([userAId, userBId, applicationId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  senderId       String
+  sender         User         @relation("SenderMessages", fields: [senderId], references: [id])
+
+  text           String?
+  isRead         Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+
+  media          Media[]      @relation("MessageMedia")
+
+  @@map("messages")
+}
+
+// ------------------------------------------------------------------
+// OTP
+// ------------------------------------------------------------------
+
+model OtpVerification {
+  id           String     @id @default(uuid())
+  userId       String?
+  user         User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mobileNumber String
+  otpCode      String
+  purpose      OtpPurpose
+  isUsed       Boolean    @default(false)
+  expiresAt    DateTime
+  createdAt    DateTime   @default(now())
+
+  @@map("otp_verifications")
+}
+
+// ------------------------------------------------------------------
+// NOTIFICATIONS & PREFERENCES
+// ------------------------------------------------------------------
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type      NotificationType
+  title     String
+  body      String
+  data      Json?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id                     String  @id @default(uuid())
+  userId                 String  @unique
+  user                   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  pushEnabled            Boolean @default(true)
+  emailEnabled           Boolean @default(true)
+  newApplicationEnabled  Boolean @default(true)
+  newMessageEnabled      Boolean @default(true)
+  opportunityUpdatesEnabled Boolean @default(true)
+
+  @@map("notification_preferences")
+}
+
+// ------------------------------------------------------------------
+// REPORTS & MODERATION (ADMIN)
+// ------------------------------------------------------------------
+
+model Report {
+  id              String           @id @default(uuid())
+  reportedById    String
+  reportedBy      User             @relation("ReportedBy", fields: [reportedById], references: [id])
+
+  targetType      ReportTargetType
+  targetId        String
+
+  reportedUserId  String?
+  reportedUser    User?            @relation("ReportedUser", fields: [reportedUserId], references: [id])
+
+  reason          String
+  status          ReportStatus     @default(PENDING)
+  adminNote       String?
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@map("reports")
+}
+
+// ------------------------------------------------------------------
+// ADMIN
+// ------------------------------------------------------------------
+
+model Admin {
+  id           String   @id @default(uuid())
+  fullName     String
+  email        String   @unique
+  passwordHash String
+  isSuperAdmin Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("admins")
+}
