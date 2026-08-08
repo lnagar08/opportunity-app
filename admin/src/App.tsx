@@ -5,6 +5,7 @@ import { AuthProvider } from '@/context/AuthContext';
 import ProtectedRoute from '@/components/protected-route';
 import Dashboard from './pages/Dashboard/Dashboard';
 import Seeker from './pages/Seeker/Seeker';
+import SeekerDetail from './pages/Seeker/SeekerDetail';
 import Login from './pages/Login';
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
 						<Route element={<AppLayout />}>
 							<Route path="/dashboard" element={<Dashboard />} />
 							<Route path="/seekers" element={<Seeker />} />
+							<Route path="/seekers/:id" element={<SeekerDetail />} />
 							{/* other authenticated routes */}
 						</Route>
 					</Route>

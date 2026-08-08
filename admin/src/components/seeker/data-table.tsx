@@ -20,7 +20,7 @@ import {
 	accountStatusClassMap,
 	certificateStatusClassMap
 } from '@/constants/seeker-table-constants';
-import type { AdminSeeker, AccountStatus } from '@/types/seeker.types';
+import type { AdminSeeker, AccountStatus, CertificateReviewResult } from '@/types/seeker.types';
 
 interface IDataTableProps {
 	data: AdminSeeker[];
@@ -49,6 +49,22 @@ const DataTable = ({
 		setSeekersData(seekersData.map((s) => (s.id === updated.id ? updated : s)));
 	};
 
+	const patchSeekerCertificate = (seekerId: string, result: CertificateReviewResult) => {
+		setSeekersData(
+			seekersData.map((s) =>
+				s.id === seekerId && s.seekerProfile
+					? {
+							...s,
+							seekerProfile: {
+								...s.seekerProfile,
+								certificateStatus: result.certificateStatus
+							}
+						}
+					: s
+			)
+		);
+	};
+
 	const handleAccountStatusChange = async (seeker: AdminSeeker, status: AccountStatus) => {
 		const previous = seeker.status;
 		// optimistic update
@@ -69,8 +85,8 @@ const DataTable = ({
 		if (!seeker.seekerProfile) return;
 		setPendingActionId(seeker.id);
 		try {
-			const updated = await seekerService.reviewCertificate(seeker.id, 'APPROVED');
-			patchSeeker(updated);
+			const result = await seekerService.reviewCertificate(seeker.id, 'APPROVED');
+			patchSeekerCertificate(seeker.id, result);
 		} catch (err) {
 			alert(getApiErrorMessage(err, 'Failed to approve certificate'));
 		} finally {
@@ -80,8 +96,8 @@ const DataTable = ({
 
 	const handleRejectCertificate = async (reason: string) => {
 		if (!rejectTargetId) return;
-		const updated = await seekerService.reviewCertificate(rejectTargetId, 'REJECTED', reason);
-		patchSeeker(updated);
+		const result = await seekerService.reviewCertificate(rejectTargetId, 'REJECTED', reason);
+		patchSeekerCertificate(rejectTargetId, result);
 		setRejectTargetId(null);
 	};
 
@@ -161,7 +177,7 @@ const DataTable = ({
 								</TableCell>
 								<TableCell>
 									<CustomSelect
-										defaultValue={seeker.status}
+										value={seeker.status}
 										disabled={pendingActionId === seeker.id}
 										onValueChange={(value) => handleAccountStatusChange(seeker, value as AccountStatus)}
 										options={accountStatusOptions}
