@@ -71,6 +71,9 @@ const updateReportValidator = [
   body('adminNote')
     .optional({ checkFalsy: true })
     .isLength({ max: 1000 }).withMessage('adminNote must be under 1000 characters'),
+  body('suspendReportedUser')                                    // ADDED
+    .optional()                                                  // ADDED
+    .isBoolean().withMessage('suspendReportedUser must be boolean'), // ADDED
 ];
 
 const createAdminValidator = [

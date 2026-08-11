@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const prisma = require('../../config/db');
 const { ApiError } = require('../../utils/apiResponse');
+const { notifyApplicantsOfClosure } = require('../../utils/notifications');
 
 const SALT_ROUNDS = 10;
 
@@ -50,7 +51,7 @@ const listUsers = async (role, { page = 1, limit = 20, search, status, certifica
       take: Number(limit),
       include: role === 'SEEKER'
         ? { seekerProfile: { include: { disabilityType: true } } }
-        : { giverProfile: true },
+        : { giverProfile: true, _count: { select: { opportunities: true } } },
     }),
     prisma.user.count({ where }),
   ]);
@@ -126,7 +127,7 @@ const reviewCertificate = async (userId, certificateStatus, rejectReason) => {
 // ---------------- OPPORTUNITY MODERATION ----------------
 
 const listAllOpportunities = async ({ page = 1, limit = 20, status, search }) => {
-  const where = {};
+  const where = {status: { not: 'DELETED' }};
   if (status) where.status = status;
   if (search) {
     where.OR = [
@@ -169,7 +170,9 @@ const getOpportunityDetails = async (opportunityId) => {
 const closeOpportunity = async (opportunityId) => {
   const opportunity = await prisma.opportunity.findUnique({ where: { id: opportunityId } });
   if (!opportunity) throw new ApiError(404, 'Opportunity not found');
-  return prisma.opportunity.update({ where: { id: opportunityId }, data: { status: 'CLOSED' } });
+  const updated = await prisma.opportunity.update({ where: { id: opportunityId }, data: { status: 'CLOSED' } });
+  await notifyApplicantsOfClosure(opportunityId); 
+  return updated;
 };
 
 const deleteOpportunity = async (opportunityId) => {
@@ -234,49 +237,6 @@ const deleteCategory = async (id) => {
   return prisma.category.update({ where: { id }, data: { isActive: false } });
 };
 
-// ---------------- REPORTS & MODERATION ----------------
-
-const listReports = async ({ page = 1, limit = 20, status, targetType }) => {
-  const where = { ...(status && { status }), ...(targetType && { targetType }) };
-
-  const [items, total] = await Promise.all([
-    prisma.report.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      skip: (page - 1) * limit,
-      take: Number(limit),
-      include: {
-        reportedBy: { select: { id: true, fullName: true, role: true } },
-        reportedUser: { select: { id: true, fullName: true, role: true } },
-      },
-    }),
-    prisma.report.count({ where }),
-  ]);
-
-  return { items, total, page: Number(page), limit: Number(limit) };
-};
-
-const getReportDetails = async (reportId) => {
-  const report = await prisma.report.findUnique({
-    where: { id: reportId },
-    include: {
-      reportedBy: { select: { id: true, fullName: true, role: true, mobileNumber: true } },
-      reportedUser: { select: { id: true, fullName: true, role: true, mobileNumber: true } },
-    },
-  });
-  if (!report) throw new ApiError(404, 'Report not found');
-  return report;
-};
-
-const updateReportStatus = async (reportId, status, adminNote) => {
-  const report = await prisma.report.findUnique({ where: { id: reportId } });
-  if (!report) throw new ApiError(404, 'Report not found');
-  return prisma.report.update({
-    where: { id: reportId },
-    data: { status, ...(adminNote !== undefined && { adminNote }) },
-  });
-};
-
 // ---------------- ADMIN MANAGEMENT (SUPER ADMIN) ----------------
 
 const listAdmins = async () => prisma.admin.findMany({
@@ -298,6 +258,105 @@ const createAdmin = async (payload) => {
     },
   });
   return admin;
+};
+
+// Reports — target resolution + suspend-in-one-call
+
+// NEW helper
+const resolveReportTarget = async (targetType, targetId) => {
+  if (targetType === 'USER') {
+    return prisma.user.findUnique({
+      where: { id: targetId },
+      select: { id: true, fullName: true, role: true, status: true },
+    });
+  }
+  if (targetType === 'OPPORTUNITY') {
+    return prisma.opportunity.findUnique({
+      where: { id: targetId },
+      select: { id: true, title: true, description: true, status: true, giverId: true },
+    });
+  }
+  if (targetType === 'MESSAGE') {
+    return prisma.message.findUnique({
+      where: { id: targetId },
+      select: { id: true, text: true, senderId: true, conversationId: true, createdAt: true },
+    });
+  }
+  return null;
+};
+
+// ---------------- REPORTS & MODERATION ----------------
+
+const listReports = async ({ page = 1, limit = 20, status, targetType }) => {
+  const where = { ...(status && { status }), ...(targetType && { targetType }) };
+
+  const [rawItems, total] = await Promise.all([
+    prisma.report.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: Number(limit),
+      include: {
+        reportedBy: { select: { id: true, fullName: true, role: true } },
+        reportedUser: { select: { id: true, fullName: true, role: true } },
+      },
+    }),
+    prisma.report.count({ where }),
+  ]);
+
+  // NEW — resolve each report's actual target content
+  const items = await Promise.all(
+    rawItems.map(async (report) => ({
+      ...report,
+      target: await resolveReportTarget(report.targetType, report.targetId),
+    }))
+  );
+
+  return { items, total, page: Number(page), limit: Number(limit) };
+};
+
+const getReportDetails = async (reportId) => {
+  const report = await prisma.report.findUnique({
+    where: { id: reportId },
+    include: {
+      reportedBy: { select: { id: true, fullName: true, role: true, mobileNumber: true } },
+      reportedUser: { select: { id: true, fullName: true, role: true, mobileNumber: true } },
+    },
+  });
+  if (!report) throw new ApiError(404, 'Report not found');
+
+  const target = await resolveReportTarget(report.targetType, report.targetId); // NEW
+  return { ...report, target }; // NEW
+};
+
+const updateReportStatus = async (reportId, status, adminNote, suspendReportedUser) => {
+  const report = await prisma.report.findUnique({ where: { id: reportId } });
+  if (!report) throw new ApiError(404, 'Report not found');
+
+  await prisma.report.update({
+    where: { id: reportId },
+    data: { status, ...(adminNote !== undefined && { adminNote }) },
+  });
+
+  if (suspendReportedUser) {
+    if (!report.reportedUserId) {
+      throw new ApiError(400, 'This report has no associated user to suspend');
+    }
+    await prisma.user.update({ where: { id: report.reportedUserId }, data: { status: 'SUSPENDED' } });
+    await prisma.notification.create({
+      data: {
+        userId: report.reportedUserId,
+        type: 'GENERAL',
+        title: 'Account Suspended',
+        body: 'Your account has been suspended following a review of a reported issue.',
+        data: { reportId },
+      },
+    });
+  }
+
+  // Return the same full shape as getReportDetails/listReports, not the
+  // bare row prisma.report.update() gives back.
+  return getReportDetails(reportId);
 };
 
 module.exports = {

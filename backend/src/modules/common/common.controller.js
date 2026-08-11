@@ -1,7 +1,8 @@
 const { success } = require('../../utils/apiResponse');
 const service = require('./common.service');
+const { toFileUrl } = require('../../utils/fileUrl');
 
-const mapUploadedFile = (file) => {
+const mapUploadedFile = (req, file) => {
   const mimeToType = (mime) => {
     if (mime.startsWith('image/')) return 'IMAGE';
     if (mime.startsWith('audio/')) return 'AUDIO';
@@ -10,7 +11,7 @@ const mapUploadedFile = (file) => {
   };
   return {
     type: mimeToType(file.mimetype),
-    url: `/uploads/${file.filename}`,
+    url: toFileUrl(req, file.filename),
     fileName: file.originalname,
     sizeBytes: file.size,
   };
@@ -25,7 +26,7 @@ const listConversations = async (req, res, next) => {
 
 const sendMessage = async (req, res, next) => {
   try {
-    const mediaFiles = (req.files || []).map(mapUploadedFile);
+    const mediaFiles = (req.files || []).map((file) => mapUploadedFile(req, file));
     const message = await service.sendMessage(req.user.id, req.body, mediaFiles);
     return success(res, 201, 'Message sent successfully', message);
   } catch (err) { next(err); }

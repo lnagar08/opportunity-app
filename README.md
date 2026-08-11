@@ -28,6 +28,8 @@ src/modules/giver/             -> Opportunity Giver profile, opportunities, appl
 src/modules/seeker/            -> Opportunity Seeker profile builder, search, apply, applications
 src/modules/admin/              -> Admin Panel: users, certificates, opportunities, master data, reports
 src/modules/master/             -> public dropdown/lookup endpoints (Disability Types, Categories)
+src/modules/content/             -> Terms & Conditions / Privacy Policy content pages
+src/modules/support/             -> Contact Support messages (Seeker/Giver -> Admin)
 src/modules/common/            -> messages, notifications, settings (shared)
 ```
 
@@ -154,6 +156,33 @@ Admins manage the full underlying tables (including inactive/legacy entries) via
 
 Fields like Gender, Budget Type, Work Mode, Application Status, etc. are fixed enums (not table-backed), so their options are constant and don't need a lookup API — they're documented inline next to each endpoint above.
 
+## Settings: Content Pages (Terms & Conditions / Privacy Policy)
+
+Backed by a **table** (`ContentPage`, keyed by a fixed `slug` enum), not hardcoded strings — so Admins can edit the copy without a deploy.
+
+| Method | Endpoint | Auth | Notes |
+|---|---|---|---|
+| GET | /api/v1/content-pages/terms-and-conditions | Public | Screen 27 + registration screens' "Accept Terms" link |
+| GET | /api/v1/content-pages/privacy-policy | Public | Screen 27 |
+| GET | /api/v1/admin/content-pages | Admin | List both pages (with `updatedByAdmin`) |
+| GET | /api/v1/admin/content-pages/:slug | Admin | Same slug values as above |
+| PUT | /api/v1/admin/content-pages/:slug | Admin | body: `title*`, `content*` (HTML/Markdown) |
+
+The public `GET` auto-creates an empty placeholder row on first request (via `upsert`) so the app never gets a 404 for a page it's required to show — it renders empty until an Admin fills it in. `npm run prisma:seed` also seeds both pages with placeholder content.
+
+## Settings: Contact Support
+
+A simple form — fixed category + free-text message, nothing else. Stored in its own table (`SupportMessage`) so Admins have a queue to work through.
+
+| Method | Endpoint | Auth | Body |
+|---|---|---|---|
+| POST | /api/v1/support/contact | Seeker or Giver | `category*` (GENERAL_INQUIRY / TECHNICAL_ISSUE / REPORT_A_PROBLEM), `message*` |
+| GET | /api/v1/support/contact | Seeker or Giver | Own submitted messages, paginated |
+| GET | /api/v1/admin/support?page=&limit=&status=&category= | Admin | All messages, with submitter info |
+| GET | /api/v1/admin/support/:id | Admin | Single message details |
+| PATCH | /api/v1/admin/support/:id/status | Admin | body: `status*` (OPEN/RESOLVED) |
+
+The 3 categories are a fixed enum (`SupportCategory`) — same reasoning as Gender/WorkMode: a short, closed list doesn't need its own dropdown-lookup table/API.
 
 
 Admins are a **separate table** (`Admin`), not a `User` role — they log in via `/api/v1/auth/admin/login`, not `/api/v1/auth/login`. Seed the first Super Admin with `npm run prisma:seed` (reads `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` from `.env`, defaults to `admin@opportunityapp.com` / `Admin@12345`).
@@ -208,8 +237,18 @@ All `admin/*` routes require `Authorization: Bearer <admin token>`.
 | GET | /api/v1/admin/reports/:id | |
 | PATCH | /api/v1/admin/reports/:id | status* (REVIEWED/DISMISSED/ACTION_TAKEN), adminNote |
 
-### Admin Management (Super Admin only)
+
+### Content Pages (see "Settings: Content Pages" above)
 | Method | Endpoint | Body |
 |---|---|---|
-| GET | /api/v1/admin/admins | |
-| POST | /api/v1/admin/admins | fullName*, email*, password*, isSuperAdmin |
+| GET | /api/v1/admin/content-pages | |
+| GET | /api/v1/admin/content-pages/:slug | |
+| PUT | /api/v1/admin/content-pages/:slug | title*, content* |
+
+### Contact Support Inbox (see "Settings: Contact Support" above)
+| Method | Endpoint | Body |
+|---|---|---|
+| GET | /api/v1/admin/support?page=&limit=&status=&category= | |
+| GET | /api/v1/admin/support/:id | |
+| PATCH | /api/v1/admin/support/:id/status | status* |
+

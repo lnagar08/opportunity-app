@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users2 } from 'lucide-react';
+import { Briefcase, Building2, Database, Flag, LayoutDashboard, Users2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
   Sidebar,
@@ -26,6 +26,36 @@ const data = {
       title: 'Seekers Management',
       url: '/seekers',
       icon: Users2,
+      isActive: true
+    },
+    {
+      title: 'Givers Management',
+      url: '/givers',
+      icon: Building2,
+      isActive: true
+    },
+    {
+      title: 'Opportunities Management',
+      url: '/opportunities',
+      icon: Briefcase,
+      isActive: true
+    },
+    {
+      title: 'Master Data',
+      url: '/master-data',
+      icon: Database,
+      isActive: true
+    },
+    {
+      title: 'Reports & Moderation',
+      url: '/reports',
+      icon: Flag,
+      isActive: true
+    },
+    {
+      title: 'Content Management',
+      url: '/content-management',
+      icon: LayoutDashboard,
       isActive: true
     }
   ]

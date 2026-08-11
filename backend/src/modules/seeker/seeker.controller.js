@@ -1,7 +1,8 @@
 const { success } = require('../../utils/apiResponse');
 const service = require('./seeker.service');
+const { toFileUrl } = require('../../utils/fileUrl');
 
-const mapUploadedFile = (file) => {
+const mapUploadedFile = (req, file) => {
   const mimeToType = (mime) => {
     if (mime.startsWith('image/')) return 'IMAGE';
     if (mime.startsWith('audio/')) return 'AUDIO';
@@ -10,7 +11,7 @@ const mapUploadedFile = (file) => {
   };
   return {
     type: mimeToType(file.mimetype),
-    url: `/uploads/${file.filename}`,
+    url: toFileUrl(req, file.filename),
     fileName: file.originalname,
     sizeBytes: file.size,
   };
@@ -27,7 +28,7 @@ const getMyProfile = async (req, res, next) => {
 
 const updateMyProfile = async (req, res, next) => {
   try {
-    const profilePhotoUrl = req.file ? `/uploads/${req.file.filename}` : undefined;
+    const profilePhotoUrl = req.file ? toFileUrl(req, req.file.filename) : undefined;
     const user = await service.updateMyProfile(req.user.id, req.body, profilePhotoUrl);
     return success(res, 200, 'Profile updated successfully', user);
   } catch (err) { next(err); }
@@ -35,7 +36,7 @@ const updateMyProfile = async (req, res, next) => {
 
 const completeProfile = async (req, res, next) => {
   try {
-    const profilePhotoUrl = req.file ? `/uploads/${req.file.filename}` : undefined;
+    const profilePhotoUrl = req.file ? toFileUrl(req, req.file.filename) : undefined;
     const user = await service.completeProfile(req.user.id, req.body, profilePhotoUrl);
     return success(res, 200, 'Profile completed successfully', user);
   } catch (err) { next(err); }
@@ -150,14 +151,14 @@ const deleteCertification = async (req, res, next) => {
 
 const addPortfolio = async (req, res, next) => {
   try {
-    const mediaFiles = (req.files || []).map(mapUploadedFile);
+    const mediaFiles = (req.files || []).map((file) => mapUploadedFile(req, file));
     const record = await service.addPortfolio(req.user.id, req.body, mediaFiles);
     return success(res, 201, 'Portfolio item added successfully', record);
   } catch (err) { next(err); }
 };
 const updatePortfolio = async (req, res, next) => {
   try {
-    const mediaFiles = (req.files || []).map(mapUploadedFile);
+    const mediaFiles = (req.files || []).map((file) => mapUploadedFile(req, file));
     const record = await service.updatePortfolio(req.user.id, req.params.id, req.body, mediaFiles);
     return success(res, 200, 'Portfolio item updated successfully', record);
   } catch (err) { next(err); }
@@ -196,7 +197,7 @@ const getOpportunityDetails = async (req, res, next) => {
 
 const applyToOpportunity = async (req, res, next) => {
   try {
-    const mediaFiles = (req.files || []).map(mapUploadedFile);
+    const mediaFiles = (req.files || []).map((file) => mapUploadedFile(req, file));
     const application = await service.applyToOpportunity(req.user.id, req.params.id, req.body, mediaFiles);
     return success(res, 201, 'Application submitted successfully', application);
   } catch (err) { next(err); }

@@ -7,6 +7,13 @@ import Dashboard from './pages/Dashboard/Dashboard';
 import Seeker from './pages/Seeker/Seeker';
 import SeekerDetail from './pages/Seeker/SeekerDetail';
 import Login from './pages/Login';
+import Giver from './pages/Giver/Giver';
+import GiverDetail from './pages/Giver/GiverDetail';
+import OpportunityDetail from './pages/Opportunity/OpportunityDetail';
+import Opportunity from './pages/Opportunity/Opportunity';
+import MasterData from './pages/Master/MasterData';
+import Reports from './pages/Reports/Reports';
+import ContentManagement from './pages/Content/ContentManagement';
 
 function App() {
 	return (
@@ -23,7 +30,13 @@ function App() {
 							<Route path="/dashboard" element={<Dashboard />} />
 							<Route path="/seekers" element={<Seeker />} />
 							<Route path="/seekers/:id" element={<SeekerDetail />} />
-							{/* other authenticated routes */}
+							<Route path="/givers" element={<Giver />} />
+							<Route path="/givers/:id" element={<GiverDetail />} />
+							<Route path="/opportunities" element={<Opportunity />} />
+							<Route path="/opportunities/:id" element={<OpportunityDetail />} />
+							<Route path="/master-data" element={<MasterData />} />
+							<Route path="/reports" element={<Reports />} />
+							<Route path="/content-management" element={<ContentManagement />} />
 						</Route>
 					</Route>
 				</Routes>

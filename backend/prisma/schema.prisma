@@ -111,6 +111,22 @@ enum ReportStatus {
   ACTION_TAKEN
 }
 
+enum ContentPageSlug {
+  TERMS_AND_CONDITIONS
+  PRIVACY_POLICY
+}
+
+enum SupportCategory {
+  GENERAL_INQUIRY
+  TECHNICAL_ISSUE
+  REPORT_A_PROBLEM
+}
+
+enum SupportStatus {
+  OPEN
+  RESOLVED
+}
+
 // ------------------------------------------------------------------
 // CORE USER TABLES
 // ------------------------------------------------------------------
@@ -148,6 +164,7 @@ model User {
   notificationPref    NotificationPreference?
   reportsFiled         Report[]            @relation("ReportedBy")
   reportsAgainst        Report[]            @relation("ReportedUser")
+  supportMessages      SupportMessage[]
 
   @@map("users")
 }
@@ -533,6 +550,45 @@ model Report {
   @@map("reports")
 }
 
+
+// ------------------------------------------------------------------
+// SETTINGS: CONTENT PAGES (Terms & Conditions / Privacy Policy)
+// ------------------------------------------------------------------
+
+model ContentPage {
+  id               String          @id @default(uuid())
+  slug             ContentPageSlug @unique
+  title            String
+  content          String          // HTML/Markdown body, rendered as-is by the app
+
+  updatedByAdminId String?
+  updatedByAdmin   Admin?          @relation(fields: [updatedByAdminId], references: [id])
+
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@map("content_pages")
+}
+
+// ------------------------------------------------------------------
+// SETTINGS: CONTACT SUPPORT
+// ------------------------------------------------------------------
+
+model SupportMessage {
+  id        String          @id @default(uuid())
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  category  SupportCategory
+  message   String
+  status    SupportStatus   @default(OPEN)
+
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@map("support_messages")
+}
+
 // ------------------------------------------------------------------
 // ADMIN
 // ------------------------------------------------------------------
@@ -545,6 +601,8 @@ model Admin {
   isSuperAdmin Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+
+  updatedContentPages ContentPage[]
 
   @@map("admins")
 }

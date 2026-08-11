@@ -22,7 +22,38 @@ const getMyProfile = async (userId) => {
     },
   });
   if (!user) throw new ApiError(404, 'User not found');
-  return user;
+  return { ...user, profileCompletionPercentage: computeProfileCompletionPercentage(user) }; // CHANGED
+};
+
+// NEW — everything below is new
+const PROFILE_COMPLETION_WEIGHTS = {
+  photo: 15,
+  bio: 15,
+  education: 12,
+  experience: 12,
+  skills: 12,
+  awards: 8,
+  certifications: 8,
+  portfolio: 8,
+  certificateApproved: 10,
+};
+
+const computeProfileCompletionPercentage = (user) => {
+  const profile = user.seekerProfile;
+  if (!profile) return 0;
+
+  let score = 0;
+  if (user.profilePhotoUrl) score += PROFILE_COMPLETION_WEIGHTS.photo;
+  if (profile.bio) score += PROFILE_COMPLETION_WEIGHTS.bio;
+  if (profile.education?.length) score += PROFILE_COMPLETION_WEIGHTS.education;
+  if (profile.experience?.length) score += PROFILE_COMPLETION_WEIGHTS.experience;
+  if (profile.skills?.length) score += PROFILE_COMPLETION_WEIGHTS.skills;
+  if (profile.awards?.length) score += PROFILE_COMPLETION_WEIGHTS.awards;
+  if (profile.certifications?.length) score += PROFILE_COMPLETION_WEIGHTS.certifications;
+  if (profile.portfolioItems?.length) score += PROFILE_COMPLETION_WEIGHTS.portfolio;
+  if (profile.certificateStatus === 'APPROVED') score += PROFILE_COMPLETION_WEIGHTS.certificateApproved;
+
+  return Math.min(100, score);
 };
 
 const getSeekerProfileId = async (userId) => {

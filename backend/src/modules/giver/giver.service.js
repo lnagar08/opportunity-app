@@ -1,5 +1,6 @@
 const prisma = require('../../config/db');
 const { ApiError } = require('../../utils/apiResponse');
+const { notifyApplicantsOfClosure } = require('../../utils/notifications');
 
 // ---------------- PROFILE ----------------
 
@@ -204,10 +205,12 @@ const getOpportunityDetails = async (giverId, opportunityId) => {
 
 const closeOpportunity = async (giverId, opportunityId) => {
   await ensureOpportunityOwnership(opportunityId, giverId);
-  return prisma.opportunity.update({
+  const opportunity = await prisma.opportunity.update({
     where: { id: opportunityId },
     data: { status: 'CLOSED' },
   });
+  await notifyApplicantsOfClosure(opportunityId); 
+  return opportunity;
 };
 
 const deleteOpportunity = async (giverId, opportunityId) => {

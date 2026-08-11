@@ -13,7 +13,7 @@ const Dashboard = () => {
 					{ label: 'Home', href: '/dashboard' },
 					{ label: 'Dashboard', href: '/dashboard' }
 				]}
-				heading="Hello Admin!"
+				heading="Dashboard"
 			/>
 
 			{error && <p className="text-sm text-destructive mb-4">{error}</p>}

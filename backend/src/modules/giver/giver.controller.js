@@ -1,7 +1,8 @@
 const { success } = require('../../utils/apiResponse');
 const service = require('./giver.service');
+const { toFileUrl } = require('../../utils/fileUrl');
 
-const mapUploadedFile = (file) => {
+const mapUploadedFile = (req, file) => {
   const mimeToType = (mime) => {
     if (mime.startsWith('image/')) return 'IMAGE';
     if (mime.startsWith('audio/')) return 'AUDIO';
@@ -10,7 +11,7 @@ const mapUploadedFile = (file) => {
   };
   return {
     type: mimeToType(file.mimetype),
-    url: `/uploads/${file.filename}`,
+    url: toFileUrl(req, file.filename),
     fileName: file.originalname,
     sizeBytes: file.size,
   };
@@ -27,7 +28,7 @@ const getMyProfile = async (req, res, next) => {
 
 const updateMyProfile = async (req, res, next) => {
   try {
-    const profilePhotoUrl = req.file ? `/uploads/${req.file.filename}` : undefined;
+    const profilePhotoUrl = req.file ? toFileUrl(req, req.file.filename) : undefined;
     const user = await service.updateMyProfile(req.user.id, req.body, profilePhotoUrl);
     return success(res, 200, 'Profile updated successfully', user);
   } catch (err) {
@@ -52,7 +53,7 @@ const createOpportunity = async (req, res, next) => {
         ? req.body.categoryIds
         : JSON.parse(req.body.categoryIds || '[]'),
     };
-    const mediaFiles = (req.files || []).map(mapUploadedFile);
+    const mediaFiles = (req.files || []).map((file) => mapUploadedFile(req, file));
     const opportunity = await service.createOpportunity(req.user.id, payload, mediaFiles);
     return success(res, 201, 'Opportunity published successfully', opportunity);
   } catch (err) {

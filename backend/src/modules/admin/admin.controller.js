@@ -157,7 +157,9 @@ const getReportDetails = async (req, res, next) => {
 };
 const updateReportStatus = async (req, res, next) => {
   try {
-    const data = await service.updateReportStatus(req.params.id, req.body.status, req.body.adminNote);
+    const data = await service.updateReportStatus(
+      req.params.id, req.body.status, req.body.adminNote, req.body.suspendReportedUser // ADDED param
+    );
     return success(res, 200, 'Report updated successfully', data);
   } catch (err) { next(err); }
 };

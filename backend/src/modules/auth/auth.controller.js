@@ -1,6 +1,7 @@
 const { success } = require('../../utils/apiResponse');
 const authService = require('./auth.service');
 const { generateToken } = require('../../utils/jwt');
+const { toFileUrl } = require('../../utils/fileUrl');
 
 const registerGiver = async (req, res, next) => {
   try {
@@ -17,7 +18,7 @@ const registerGiver = async (req, res, next) => {
 
 const registerSeeker = async (req, res, next) => {
   try {
-    const disabilityCertificateUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    const disabilityCertificateUrl = req.file ? toFileUrl(req, req.file.filename) : null;
     const user = await authService.registerSeeker(req.body, disabilityCertificateUrl);
     return success(res, 201, 'Registration successful. Certificate submitted for verification.', {
       userId: user.id,
