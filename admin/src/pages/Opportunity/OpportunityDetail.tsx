@@ -7,7 +7,12 @@ import { useAdminOpportunityDetail } from '@/hooks/use-admin-opportunity-detail'
 import DetailSection from '@/components/seeker/detail-section';
 import { opportunityStatusClassMap } from '@/constants/opportunity-status-constants';
 
+import { useState } from 'react';
+import { Mail } from 'lucide-react';
+import InviteSeekersDialog from '@/components/opportunity/invite-seekers-dialog';
+
 const OpportunityDetail = () => {
+	const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
 	const { id } = useParams<{ id: string }>();
 	const navigate = useNavigate();
 	const { opportunity, isLoading, error } = useAdminOpportunityDetail(id);
@@ -38,7 +43,7 @@ const OpportunityDetail = () => {
 				heading={opportunity.title}
 			/>
 
-			<div className="mb-4">
+			<div className="mb-4 justify-between flex gap-2 sm:flex-row">
 				<Button
 					variant="ghost"
 					size="sm"
@@ -46,6 +51,9 @@ const OpportunityDetail = () => {
 					leftIcon={<ArrowLeft className="h-4 w-4" />}
 				>
 					Back to Opportunities
+				</Button>
+				<Button variantClassName="primary" variant="ghost" onClick={() => setInviteDialogOpen(true)} leftIcon={<Mail className="h-4 w-4" />}>
+					Invite Opportunity Seekers
 				</Button>
 			</div>
 
@@ -122,6 +130,7 @@ const OpportunityDetail = () => {
 					)}
 				</div>
 			</div>
+			<InviteSeekersDialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen} opportunityId={opportunity.id} />
 		</>
 	);
 };

@@ -1,6 +1,7 @@
 import { http, type ApiEnvelope } from '@/lib/http';
 import type { PaginatedResult } from '@/types/seeker.types';
 import type { AdminOpportunity, AdminOpportunityDetail, ListOpportunitiesParams } from '@/types/opportunity.types';
+import type { InviteCandidate } from '@/types/opportunity.types';
 
 export const opportunityService = {
 	list: async (params: ListOpportunitiesParams): Promise<PaginatedResult<AdminOpportunity>> => {
@@ -22,5 +23,20 @@ export const opportunityService = {
 
 	remove: async (id: string): Promise<void> => {
 		await http.delete<ApiEnvelope<null>>(`/admin/opportunities/${id}`);
+	},
+
+	listInviteCandidates: async (
+		opportunityId: string,
+		params: { page?: number; limit?: number; search?: string }
+	): Promise<PaginatedResult<InviteCandidate>> => {
+		const { data } = await http.get<ApiEnvelope<PaginatedResult<InviteCandidate>>>(
+			`/admin/opportunities/${opportunityId}/invite-candidates`,
+			{ params }
+		);
+		return data.data;
+	},
+
+	inviteSeeker: async (opportunityId: string, seekerId: string): Promise<void> => {
+		await http.post<ApiEnvelope<null>>(`/admin/opportunities/${opportunityId}/invite`, { seekerId });
 	}
 };

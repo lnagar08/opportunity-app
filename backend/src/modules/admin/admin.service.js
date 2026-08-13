@@ -2,6 +2,8 @@ const bcrypt = require('bcrypt');
 const prisma = require('../../config/db');
 const { ApiError } = require('../../utils/apiResponse');
 const { notifyApplicantsOfClosure } = require('../../utils/notifications');
+const { sendMail } = require('../../utils/mailer');
+const { renderEmail, renderDetailsTable, escapeHtml } = require('../../utils/emailTemplates');
 
 const SALT_ROUNDS = 10;
 
@@ -359,6 +361,150 @@ const updateReportStatus = async (reportId, status, adminNote, suspendReportedUs
   return getReportDetails(reportId);
 };
 
+
+// ---------------- OPPORTUNITY INVITES (manual email invite) ----------------
+ 
+// Eligible = approved-certificate, active Seekers who haven't already
+// applied to this opportunity (an invite is redundant once they've
+// already applied). `alreadyInvited` is surfaced per-row so the Admin UI
+// can grey out / relabel the button instead of allowing silent re-sends.
+const listInviteCandidates = async (opportunityId, { page = 1, limit = 20, search }) => {
+  const opportunity = await prisma.opportunity.findUnique({ where: { id: opportunityId } });
+  if (!opportunity) throw new ApiError(404, 'Opportunity not found');
+ 
+  const where = {
+    role: 'SEEKER',
+    status: 'ACTIVE',
+    seekerProfile: { certificateStatus: 'APPROVED' },
+    applications: { none: { opportunityId } },
+    ...(search && {
+      OR: [
+        { fullName: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+      ],
+    }),
+  };
+ 
+  const [users, total, invited] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: Number(limit),
+      select: {
+        id: true, fullName: true, email: true, city: true, state: true, profilePhotoUrl: true,
+        seekerProfile: { select: { bio: true, disabilityType: { select: { name: true } } } },
+      },
+    }),
+    prisma.user.count({ where }),
+    prisma.opportunityInvite.findMany({ where: { opportunityId }, select: { seekerId: true } }),
+  ]);
+ 
+  const invitedIds = new Set(invited.map((i) => i.seekerId));
+  const items = users.map((u) => ({ ...u, alreadyInvited: invitedIds.has(u.id) }));
+ 
+  return { items, total, page: Number(page), limit: Number(limit) };
+};
+
+// Builds the invite email body — structured, technical presentation of
+// the opportunity (not just a truncated description dump) so the seeker
+// can gauge fit before opening the app: work mode, budget, location, and
+// categories laid out as labeled fields via renderDetailsTable.
+const buildInviteEmailHtml = (opportunity, seeker) => {
+  const budgetDisplay =
+    opportunity.budgetType === 'FIXED' && opportunity.budgetAmount
+      ? `₹${opportunity.budgetAmount} (Fixed)`
+      : 'Negotiable';
+ 
+  const locationDisplay = opportunity.city
+    ? `${opportunity.city}${opportunity.state ? `, ${opportunity.state}` : ''}`
+    : null;
+ 
+  const categoryDisplay = opportunity.categories?.map((c) => c.category.name).join(', ') || null;
+ 
+  const descriptionSnippet =
+    opportunity.description.length > 400
+      ? `${opportunity.description.slice(0, 400)}…`
+      : opportunity.description;
+ 
+  const opportunityUrl = `${(process.env.PUBLIC_APP_URL || '').replace(/\/+$/, '')}/opportunities/${opportunity.id}`;
+ 
+  const bodyHtml = `
+    <p>Hi ${escapeHtml(seeker.fullName)},</p>
+    <p>
+      Based on your profile, our team identified the following opportunity as a potential match.
+      We encourage you to review the details below and apply directly through the app.
+    </p>
+ 
+    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%; margin-top:20px;">
+      <tr>
+        <td style="padding:16px; background-color:#F9FAFB; border:1px solid #E5E7EB; border-radius:6px;">
+          <p style="margin:0 0 8px; font-size:16px; font-weight:600; color:#1F2937;">
+            ${escapeHtml(opportunity.title)}
+          </p>
+          <p style="margin:0; font-size:13px; line-height:20px; color:#374151;">
+            ${escapeHtml(descriptionSnippet)}
+          </p>
+          ${renderDetailsTable([
+            { label: 'Work Mode', value: opportunity.workMode },
+            { label: 'Budget', value: budgetDisplay },
+            { label: 'Location', value: locationDisplay },
+            { label: 'Category', value: categoryDisplay },
+            { label: 'Opportunity ID', value: opportunity.id },
+          ])}
+        </td>
+      </tr>
+    </table>
+ 
+    <p style="margin-top:20px;">
+      If you're interested, open the Opportunity App and navigate to this listing to submit your application.
+      Applications are reviewed directly by the Opportunity Giver.
+    </p>
+  `;
+ 
+  return renderEmail({
+    preheader: `You've been invited to apply for ${opportunity.title}`,
+    title: 'You have a new opportunity invitation',
+    bodyHtml,
+    cta: opportunityUrl ? { label: 'View Opportunity', url: opportunityUrl } : undefined,
+    footerNote: 'This invitation was sent by an administrator based on your profile eligibility.',
+  });
+};
+
+const inviteSeekerToOpportunity = async (opportunityId, seekerId, adminId) => {
+  const [opportunity, seeker] = await Promise.all([
+    prisma.opportunity.findUnique({ where: { id: opportunityId } }),
+    prisma.user.findUnique({ where: { id: seekerId } }),
+  ]);
+  if (!opportunity) throw new ApiError(404, 'Opportunity not found');
+  if (!seeker || seeker.role !== 'SEEKER') throw new ApiError(404, 'Seeker not found');
+  if (!seeker.email) throw new ApiError(400, 'This seeker has no email on file to invite');
+ 
+  await sendMail({
+    to: seeker.email,
+    subject: `Opportunity Invitation: ${opportunity.title}`,
+    html: buildInviteEmailHtml(opportunity, seeker),
+  });
+  
+  const invite = await prisma.opportunityInvite.upsert({
+    where: { opportunityId_seekerId: { opportunityId, seekerId } },
+    update: { invitedByAdminId: adminId, emailSentAt: new Date() }, // allows a deliberate re-send
+    create: { opportunityId, seekerId, invitedByAdminId: adminId },
+  });
+ 
+  await prisma.notification.create({
+    data: {
+      userId: seekerId,
+      type: 'GENERAL',
+      title: 'You have an invite',
+      body: `You've been invited to apply for "${opportunity.title}".`,
+      data: { opportunityId },
+    },
+  });
+ 
+  return invite;
+};
+
 module.exports = {
   getDashboardStats,
   listUsers,
@@ -373,4 +519,5 @@ module.exports = {
   listCategories, createCategory, updateCategory, deleteCategory,
   listReports, getReportDetails, updateReportStatus,
   listAdmins, createAdmin,
+  listInviteCandidates, inviteSeekerToOpportunity,
 };

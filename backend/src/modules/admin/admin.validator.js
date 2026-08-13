@@ -87,6 +87,21 @@ const createAdminValidator = [
   body('isSuperAdmin').optional().isBoolean().withMessage('isSuperAdmin must be boolean'),
 ];
 
+
+const listInviteCandidatesValidator = [
+  param('id').isUUID().withMessage('Invalid Opportunity ID'),
+  query('page').optional().isInt({ min: 1 }).withMessage('page must be a positive integer'),
+  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('limit must be 1-100'),
+  query('search').optional().trim(),
+];
+ 
+const inviteSeekerValidator = [
+  param('id').isUUID().withMessage('Invalid Opportunity ID'),
+  body('seekerId')
+    .notEmpty().withMessage('seekerId is required')
+    .isUUID().withMessage('seekerId must be a valid UUID'),
+];
+
 module.exports = {
   idParamValidator,
   listUsersValidator,
@@ -98,4 +113,6 @@ module.exports = {
   listReportsValidator,
   updateReportValidator,
   createAdminValidator,
+  listInviteCandidatesValidator,
+  inviteSeekerValidator,
 };

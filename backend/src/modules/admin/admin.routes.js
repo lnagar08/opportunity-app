@@ -15,6 +15,8 @@ const {
   listReportsValidator,
   updateReportValidator,
   createAdminValidator,
+  listInviteCandidatesValidator,
+  inviteSeekerValidator,
 } = require('./admin.validator');
 
 // All routes below require a valid Admin token
@@ -45,6 +47,18 @@ router.get('/opportunities', listOpportunitiesValidator, validate, controller.li
 router.get('/opportunities/:id', idParamValidator, validate, controller.getOpportunityDetails);
 router.patch('/opportunities/:id/close', idParamValidator, validate, controller.closeOpportunity);
 router.delete('/opportunities/:id', idParamValidator, validate, controller.deleteOpportunity);
+
+// "Invite Opportunity Seekers" — manual email invite from Opportunity Management
+router.get(
+  '/opportunities/:id/invite-candidates',
+  listInviteCandidatesValidator, validate,
+  controller.listInviteCandidates
+);
+router.post(
+  '/opportunities/:id/invite',
+  inviteSeekerValidator, validate,
+  controller.inviteSeeker
+);
 
 // Master data: Disability Types
 router.get('/master/disability-types', controller.listDisabilityTypes);

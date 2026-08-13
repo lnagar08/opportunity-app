@@ -13,7 +13,7 @@ const MasterData = () => {
 			/>
 
 			<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-				<MasterList resource="categories" label="Category" />
+				<MasterList resource="categories" label="Categorie" />
 				<MasterList resource="disability-types" label="Disability Type" />
 			</div>
 		</>

@@ -165,6 +165,7 @@ model User {
   reportsFiled         Report[]            @relation("ReportedBy")
   reportsAgainst        Report[]            @relation("ReportedUser")
   supportMessages      SupportMessage[]
+  invitesReceived      OpportunityInvite[] @relation("InvitedSeeker")
 
   @@map("users")
 }
@@ -363,6 +364,7 @@ model Opportunity {
   media           Media[]           @relation("OpportunityMedia")
   applications    Application[]
 
+  invites         OpportunityInvite[]
   @@map("opportunities")
 }
 
@@ -589,6 +591,26 @@ model SupportMessage {
   @@map("support_messages")
 }
 
+// prisma/schema.prisma — add this model
+
+model OpportunityInvite {
+  id              String      @id @default(uuid())
+
+  opportunityId   String
+  opportunity     Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  seekerId        String
+  seeker          User        @relation("InvitedSeeker", fields: [seekerId], references: [id], onDelete: Cascade)
+
+  invitedByAdminId String
+  invitedByAdmin  Admin       @relation(fields: [invitedByAdminId], references: [id])
+
+  emailSentAt     DateTime    @default(now())
+
+  @@unique([opportunityId, seekerId])
+  @@map("opportunity_invites")
+}
+
 // ------------------------------------------------------------------
 // ADMIN
 // ------------------------------------------------------------------
@@ -603,6 +625,7 @@ model Admin {
   updatedAt    DateTime @updatedAt
 
   updatedContentPages ContentPage[]
+  opportunityInvitesSent OpportunityInvite[]
 
   @@map("admins")
 }

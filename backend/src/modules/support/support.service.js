@@ -1,6 +1,7 @@
 const prisma = require('../../config/db');
 const { ApiError } = require('../../utils/apiResponse');
 const { sendMail } = require('../../utils/mailer');
+const { renderEmail, renderDetailsTable, escapeHtml } = require('../../utils/emailTemplates');
 
 const CATEGORY_LABELS = {
   GENERAL_INQUIRY: 'General Inquiry',
@@ -37,39 +38,54 @@ const notifySupportTeam = async (supportMessage, user) => {
     return;
   }
 
+  const bodyHtml = `
+    <p>A new Contact Support message was submitted and requires review.</p>
+    ${renderDetailsTable([
+      { label: 'Submitted By', value: `${user.fullName} (${user.role})` },
+      { label: 'Email', value: user.email || '—' },
+      { label: 'Mobile', value: user.mobileNumber },
+      { label: 'Category', value: CATEGORY_LABELS[supportMessage.category] },
+      { label: 'Ticket ID', value: supportMessage.id },
+    ])}
+    <p style="margin-top:16px; font-weight:600;">Message</p>
+    <p style="margin:4px 0 0; padding:12px; background-color:#F9FAFB; border:1px solid #E5E7EB; border-radius:6px; white-space:pre-line;">${escapeHtml(supportMessage.message)}</p>
+  `;
+
   await sendMail({
     to: supportTeamEmail,
     subject: `[Support] New ${CATEGORY_LABELS[supportMessage.category]} — ${user.fullName}`,
     replyTo: user.email || undefined,
-    html: `
-      <p>A new Contact Support message was submitted.</p>
-      <table cellpadding="6" style="border-collapse:collapse">
-        <tr><td><strong>From</strong></td><td>${user.fullName} (${user.role})</td></tr>
-        <tr><td><strong>Email</strong></td><td>${user.email || '—'}</td></tr>
-        <tr><td><strong>Mobile</strong></td><td>${user.mobileNumber}</td></tr>
-        <tr><td><strong>Category</strong></td><td>${CATEGORY_LABELS[supportMessage.category]}</td></tr>
-        <tr><td valign="top"><strong>Message</strong></td><td>${escapeHtml(supportMessage.message).replace(/\n/g, '<br/>')}</td></tr>
-      </table>
-      <p>Ticket ID: ${supportMessage.id}</p>
-    `,
+    html: renderEmail({
+      preheader: `New ${CATEGORY_LABELS[supportMessage.category]} ticket from ${user.fullName}`,
+      title: 'New Support Ticket',
+      bodyHtml,
+    }),
   });
 };
 
 const sendUserConfirmation = async (supportMessage, user) => {
+  const bodyHtml = `
+    <p>Hi ${escapeHtml(user.fullName)},</p>
+    <p>
+      Thanks for reaching out. We've received your <strong>${CATEGORY_LABELS[supportMessage.category]}</strong>
+      request and our support team will get back to you shortly.
+    </p>
+    ${renderDetailsTable([{ label: 'Reference ID', value: supportMessage.id }])}
+    <p style="margin-top:16px; font-weight:600;">Your Message</p>
+    <p style="margin:4px 0 0; padding:12px; background-color:#F9FAFB; border:1px solid #E5E7EB; border-radius:6px; white-space:pre-line;">${escapeHtml(supportMessage.message)}</p>
+  `;
+
   await sendMail({
     to: user.email,
     subject: 'We received your message',
-    html: `
-      <p>Hi ${user.fullName},</p>
-      <p>Thanks for reaching out. We've received your ${CATEGORY_LABELS[supportMessage.category]} request and our support team will get back to you shortly.</p>
-      <p><strong>Your message:</strong><br/>${escapeHtml(supportMessage.message).replace(/\n/g, '<br/>')}</p>
-      <p>Reference ID: ${supportMessage.id}</p>
-    `,
+    html: renderEmail({
+      preheader: 'We received your support request and will respond shortly.',
+      title: 'We received your message',
+      bodyHtml,
+      footerNote: 'Keep this email for your records — you can reference the ID above in any follow-up.',
+    }),
   });
 };
-
-const escapeHtml = (str) =>
-  str.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
 const listMySupportMessages = async (userId, { page = 1, limit = 20 }) => {
   const where = { userId };

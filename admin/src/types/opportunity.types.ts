@@ -48,3 +48,14 @@ export interface ListOpportunitiesParams {
 	status?: OpportunityStatus;
 	search?: string;
 }
+
+export interface InviteCandidate {
+	id: string;
+	fullName: string;
+	email: string | null;
+	city: string | null;
+	state: string | null;
+	profilePhotoUrl: string | null;
+	seekerProfile: { bio: string | null; disabilityType: { name: string } } | null;
+	alreadyInvited: boolean;
+}

@@ -181,6 +181,23 @@ const createAdmin = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+// ---------------- OPPORTUNITY INVITES ----------------
+ 
+const listInviteCandidates = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20, search } = req.query;
+    const data = await service.listInviteCandidates(req.params.id, { page, limit, search });
+    return success(res, 200, 'Invite candidates fetched successfully', data);
+  } catch (err) { next(err); }
+};
+ 
+const inviteSeeker = async (req, res, next) => {
+  try {
+    const invite = await service.inviteSeekerToOpportunity(req.params.id, req.body.seekerId, req.admin.id);
+    return success(res, 200, 'Invitation email sent successfully', invite);
+  } catch (err) { next(err); }
+};
+
 module.exports = {
   getDashboard,
   listSeekers, listGivers, getUserDetails, updateUserStatus, reviewCertificate,
@@ -189,4 +206,5 @@ module.exports = {
   listCategories, createCategory, updateCategory, deleteCategory,
   listReports, getReportDetails, updateReportStatus,
   listAdmins, createAdmin,
+  listInviteCandidates, inviteSeeker,
 };
