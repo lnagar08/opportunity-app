@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useTheme } from '@/context/ThemeContext';
-import { MoonIcon, SunIcon, ChevronDownIcon, LogOutIcon } from 'lucide-react';
+import { MoonIcon, SunIcon, ChevronDownIcon, LogOutIcon, LockKeyholeOpen } from 'lucide-react';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -9,13 +9,18 @@ import {
 	DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/context/AuthContext';
+import { useNavigate } from 'react-router';
 
 
 const AppHeader: React.FC = () => {
 	const { admin, logout } = useAuth();
 	const { theme, setTheme } = useTheme();
+	const navigate = useNavigate();
 	
-	const dropdownMenuItems = [{ label: 'Logout', icon: LogOutIcon, action: logout }];
+	const dropdownMenuItems = [
+		{ label: 'Change Password', icon: LockKeyholeOpen, link: '/change-password' },
+		{ label: 'Logout', icon: LogOutIcon, action: logout }
+	];
 	
 	return (
 		<header className="bg-background sticky top-0 z-10 flex w-full border-b-0 py-3">
@@ -51,11 +56,20 @@ const AppHeader: React.FC = () => {
 							<div className="text-foreground text-sm font-semibold">{admin?.fullName}</div>
 							<div className="text-muted-foreground text-xs">{admin?.email}</div>
 						</div>
-						{dropdownMenuItems.map(({ label, icon: Icon, action }) => (
-							<DropdownMenuItem key={label} onClick={action}>
-								<Icon className="mr-2 h-4 w-4" />
-								{label}
-							</DropdownMenuItem>
+						{dropdownMenuItems.map(({ label, icon: Icon, link, action }) => (  
+							<DropdownMenuItem 
+								key={label} 
+								onClick={() => {
+								if (link) {
+									navigate(link || '')
+								} else if (action) {
+									action();
+								}
+								}}
+							>  
+								<Icon className="mr-2 h-4 w-4" />  
+								{label}  
+							</DropdownMenuItem>  
 						))}
 					</DropdownMenuContent>
 				</DropdownMenu>

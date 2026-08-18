@@ -16,6 +16,7 @@ import Reports from './pages/Reports/Reports';
 import ContentManagement from './pages/Content/ContentManagement';
 import ForgotPassword from './pages/ForgotPassword';
 import RecoverPassword from './pages/RecoverPassword';
+import ChangePassword from './pages/ChangePassword';
 
 function App() {
 	return (
@@ -41,6 +42,7 @@ function App() {
 							<Route path="/master-data" element={<MasterData />} />
 							<Route path="/reports" element={<Reports />} />
 							<Route path="/content-management" element={<ContentManagement />} />
+							<Route path="/change-password" element={<ChangePassword />} />
 						</Route>
 					</Route>
 				</Routes>

@@ -1,5 +1,6 @@
 import axios, { AxiosError } from 'axios';
 import { getToken, clearToken } from '@/lib/token';
+import type { UseFormReturn, FieldValues, Path } from 'react-hook-form';
 
 export const http = axios.create({
 	baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000/api/v1',
@@ -50,3 +51,21 @@ export const getApiErrorMessage = (error: unknown, fallback = 'Something went wr
 	}
 	return fallback;
 };
+
+export function applyServerErrors<T extends FieldValues>(
+	error: unknown,
+	form: UseFormReturn<T>,
+	setGeneralError: (message: string) => void
+): void {
+	if (axios.isAxiosError<ApiErrorEnvelope>(error) && error.response?.data?.errors?.length) {
+		let matchedAny = false;
+		for (const { field, message } of error.response.data.errors) {
+			if (field in form.getValues()) {
+				form.setError(field as Path<T>, { type: 'server', message });
+				matchedAny = true;
+			}
+		}
+		if (matchedAny) return;
+	}
+	setGeneralError(getApiErrorMessage(error));
+}

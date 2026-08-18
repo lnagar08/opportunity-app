@@ -14,7 +14,7 @@ const AppFooter: React.FC = () => {
 				<div className="flex flex-col-reverse items-center justify-between gap-8 md:flex-row">
 					<div className="w-full text-center md:text-right">
 						<p className="text-muted-foreground text-sm">
-							Powered By:{' '}
+							Powered By: {'Opportunity App'} | &copy; {new Date().getFullYear()} All rights reserved.
 						</p>
 					</div>
 				</div>
