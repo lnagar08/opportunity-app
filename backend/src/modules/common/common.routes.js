@@ -10,6 +10,7 @@ const {
   conversationIdParamValidator,
   changePasswordValidator,
   changeMobileValidator,
+  markNotificationsReadValidator,
   notificationPreferenceValidator,
 } = require('./common.validator');
 const { param } = require('express-validator');
@@ -34,12 +35,20 @@ router.get(
 
 // Screen 26: Notifications
 router.get('/notifications', controller.listNotifications);
+router.get('/notifications/unread-count', controller.getUnreadNotificationCount);
 router.patch(
   '/notifications/:id/read',
   param('id').isUUID().withMessage('Invalid Notification ID'),
   validate,
   controller.markNotificationRead
 );
+router.patch(
+  '/notifications/read',
+  markNotificationsReadValidator,
+  validate,
+  controller.markNotificationsRead
+);
+router.patch('/notifications/read-all', controller.markAllNotificationsRead);
 
 // Screen 27: Settings
 router.put('/settings/password', changePasswordValidator, validate, controller.changePassword);

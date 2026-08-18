@@ -22,10 +22,18 @@ const getMyProfile = async (userId) => {
     },
   });
   if (!user) throw new ApiError(404, 'User not found');
-  return { ...user, profileCompletionPercentage: computeProfileCompletionPercentage(user) }; // CHANGED
+
+  return { ...user, profileCompletionPercentage: computeProfileCompletionPercentage(user) };
 };
 
-// NEW — everything below is new
+// Screen 17 (My Profile) leads with "Profile Completion" as a display
+// item — isProfileCompleted alone is a binary flag set once by the
+// Complete Profile action and never revisited, so it can't reflect how
+// filled-out the profile actually is afterward (e.g. someone who
+// completed the mandatory minimum but never added Education/Skills/etc).
+// This computes a live 0-100 score across mandatory + optional sections
+// each time the profile is fetched, purely for display — it never
+// gates anything (isProfileCompleted still does that).
 const PROFILE_COMPLETION_WEIGHTS = {
   photo: 15,
   bio: 15,
@@ -352,6 +360,18 @@ const deletePortfolio = async (userId, id) => {
   return prisma.portfolio.delete({ where: { id } });
 };
 
+const deletePortfolioMedia = async (userId, portfolioId, mediaId) => {
+  await ensureOwnedPortfolio(userId, portfolioId);
+
+  const media = await prisma.media.findUnique({ where: { id: mediaId } });
+  if (!media || media.portfolioId !== portfolioId) {
+    throw new ApiError(404, 'Media item not found on this portfolio entry');
+  }
+
+  await prisma.media.delete({ where: { id: mediaId } });
+  return { id: mediaId };
+};
+
 // ---------------- HOME ----------------
 
 const getHome = async (userId) => {
@@ -387,7 +407,7 @@ const getHome = async (userId) => {
 };
 
 // ---------------- SEARCH / DETAILS ----------------
- 
+
 // Only ONSITE/HYBRID opportunities carry latitude/longitude, so radius
 // search naturally excludes REMOTE listings (they have no location to
 // measure distance from).
@@ -400,7 +420,7 @@ const searchOpportunitiesByRadius = async ({
     Prisma.sql`o.latitude IS NOT NULL`,
     Prisma.sql`o.longitude IS NOT NULL`,
   ];
- 
+
   if (keyword) {
     conditions.push(Prisma.sql`(o.title ILIKE ${`%${keyword}%`} OR o.description ILIKE ${`%${keyword}%`})`);
   }
@@ -424,9 +444,9 @@ const searchOpportunitiesByRadius = async ({
       WHERE oc."opportunityId" = o.id AND oc."categoryId" = ${categoryId}
     )`);
   }
- 
+
   const whereClause = Prisma.join(conditions, ' AND ');
- 
+
   // Haversine formula — great-circle distance in km between (lat,lng) and each row.
   const distanceExpr = Prisma.sql`(
     6371 * acos(
@@ -436,7 +456,7 @@ const searchOpportunitiesByRadius = async ({
       ))
     )
   )`;
- 
+
   const rows = await prisma.$queryRaw`
     SELECT o.id, ${distanceExpr} AS distance_km
     FROM opportunities o
@@ -444,25 +464,25 @@ const searchOpportunitiesByRadius = async ({
     ORDER BY distance_km ASC
     LIMIT ${limit} OFFSET ${(page - 1) * limit}
   `;
- 
+
   const countRows = await prisma.$queryRaw`
     SELECT COUNT(*)::int AS count
     FROM opportunities o
     WHERE ${whereClause} AND ${distanceExpr} <= ${radiusKm}
   `;
   const total = countRows[0]?.count || 0;
- 
+
   const ids = rows.map((r) => r.id);
   if (ids.length === 0) {
     return { items: [], total, page, limit };
   }
- 
+
   const opportunities = await prisma.opportunity.findMany({
     where: { id: { in: ids } },
     include: { categories: { include: { category: true } }, giver: { select: { fullName: true, giverProfile: true } } },
   });
   const byId = new Map(opportunities.map((o) => [o.id, o]));
- 
+
   // Raw query already sorted by distance — re-attach that order + the
   // computed distance, since `findMany({ where: { id: { in }}})` does not
   // preserve input order.
@@ -472,20 +492,18 @@ const searchOpportunitiesByRadius = async ({
       return opp ? { ...opp, distanceKm: Number(r.distance_km) } : null;
     })
     .filter(Boolean);
- 
+
   return { items, total, page, limit };
 };
-
-// ---------------- SEARCH / DETAILS ----------------
 
 const searchOpportunities = async (filters) => {
   const {
     keyword, categoryId, budgetMin, budgetMax, datePosted,
     workMode, radiusKm, lat, lng, page = 1, limit = 20,
   } = filters;
- 
+
   const hasRadius = radiusKm !== undefined && lat !== undefined && lng !== undefined;
- 
+
   // ---- Radius search: needs distance math (Haversine), which Prisma's
   // query builder can't express, so this branch uses a raw SQL query. ----
   if (hasRadius) {
@@ -495,9 +513,9 @@ const searchOpportunities = async (filters) => {
       page: Number(page), limit: Number(limit),
     });
   }
- 
+
   const where = { status: 'ACTIVE' };
- 
+
   if (keyword) {
     where.OR = [
       { title: { contains: keyword, mode: 'insensitive' } },
@@ -520,7 +538,7 @@ const searchOpportunities = async (filters) => {
     const hoursMap = { '24h': 24, '7d': 24 * 7, '30d': 24 * 30 };
     where.createdAt = { gte: new Date(Date.now() - hoursMap[datePosted] * 60 * 60 * 1000) };
   }
- 
+
   const [items, total] = await Promise.all([
     prisma.opportunity.findMany({
       where,
@@ -531,7 +549,7 @@ const searchOpportunities = async (filters) => {
     }),
     prisma.opportunity.count({ where }),
   ]);
- 
+
   return { items, total, page: Number(page), limit: Number(limit) };
 };
 
@@ -686,7 +704,7 @@ module.exports = {
   addSkill, updateSkill, deleteSkill,
   addAward, updateAward, deleteAward,
   addCertification, updateCertification, deleteCertification,
-  addPortfolio, updatePortfolio, deletePortfolio,
+  addPortfolio, updatePortfolio, deletePortfolio, deletePortfolioMedia,
   getHome,
   searchOpportunities,
   getOpportunityDetails,

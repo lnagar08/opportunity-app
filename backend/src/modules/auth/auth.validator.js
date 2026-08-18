@@ -180,11 +180,48 @@ const resetPasswordValidator = [
     .withMessage('Confirm New Password must match New Password'),
 ];
 
+const adminForgotPasswordValidator = [
+  body('email')
+    .trim()
+    .notEmpty().withMessage('Email is required')
+    .isEmail().withMessage('Email must be a valid email address'),
+];
+
+const adminResetPasswordValidator = [
+  body('token')
+    .notEmpty().withMessage('Reset token is required'),
+  body('newPassword')
+    .notEmpty().withMessage('New Password is required')
+    .isLength({ min: 8 }).withMessage('New Password must be at least 8 characters')
+    .matches(/[A-Z]/).withMessage('New Password must contain at least one uppercase letter')
+    .matches(/[0-9]/).withMessage('New Password must contain at least one number'),
+  body('confirmNewPassword')
+    .notEmpty().withMessage('Confirm New Password is required')
+    .custom((value, { req }) => value === req.body.newPassword)
+    .withMessage('Confirm New Password must match New Password'),
+];
+
+const adminChangePasswordValidator = [
+  body('currentPassword').notEmpty().withMessage('Current Password is required'),
+  body('newPassword')
+    .notEmpty().withMessage('New Password is required')
+    .isLength({ min: 8 }).withMessage('New Password must be at least 8 characters')
+    .matches(/[A-Z]/).withMessage('New Password must contain at least one uppercase letter')
+    .matches(/[0-9]/).withMessage('New Password must contain at least one number'),
+  body('confirmNewPassword')
+    .notEmpty().withMessage('Confirm New Password is required')
+    .custom((value, { req }) => value === req.body.newPassword)
+    .withMessage('Confirm New Password must match New Password'),
+];
+
 module.exports = {
   registerGiverValidator,
   registerSeekerValidator,
   loginValidator,
   adminLoginValidator,
+  adminForgotPasswordValidator,
+  adminResetPasswordValidator,
+  adminChangePasswordValidator,
   otpVerifyValidator,
   resendOtpValidator,
   forgotPasswordValidator,

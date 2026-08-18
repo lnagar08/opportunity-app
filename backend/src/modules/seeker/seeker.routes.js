@@ -18,6 +18,7 @@ const {
   searchOpportunitiesValidator,
   applyValidator,
   listQueryValidator,
+  mediaIdParamValidator,
 } = require('./seeker.validator');
 
 // All routes below require an authenticated Opportunity Seeker
@@ -85,6 +86,11 @@ router.put(
   controller.updatePortfolio
 );
 router.delete('/profile/portfolio/:id', idParamValidator, validate, controller.deletePortfolio);
+router.delete(
+  '/profile/portfolio/:id/media/:mediaId',
+  idParamValidator, mediaIdParamValidator, validate,
+  controller.deletePortfolioMedia
+);
 
 // Screen 9: Home
 router.get('/home', controller.getHome);

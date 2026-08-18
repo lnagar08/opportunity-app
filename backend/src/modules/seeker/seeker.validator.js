@@ -119,6 +119,10 @@ const idParamValidator = [
   param('id').isUUID().withMessage('Invalid ID format'),
 ];
 
+const mediaIdParamValidator = [
+  param('mediaId').isUUID().withMessage('Invalid Media ID'),
+];
+
 // ---------------- SEARCH ----------------
 
 const searchOpportunitiesValidator = [
@@ -131,7 +135,7 @@ const searchOpportunitiesValidator = [
   query('radiusKm').optional().isFloat({ min: 0, max: 500 }).withMessage('radiusKm must be 0-500'),
   query('lat').optional().isFloat({ min: -90, max: 90 }).withMessage('lat must be between -90 and 90'),
   query('lng').optional().isFloat({ min: -180, max: 180 }).withMessage('lng must be between -180 and 180'),
- 
+
   // radiusKm, lat and lng are a set — providing one without the other two
   // silently did nothing before, so now it's a hard validation error.
   query('radiusKm').custom((value, { req }) => {
@@ -155,7 +159,7 @@ const searchOpportunitiesValidator = [
     }
     return true;
   }),
- 
+
   query('page').optional().isInt({ min: 1 }).withMessage('page must be a positive integer'),
   query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('limit must be 1-100'),
 ];
@@ -197,4 +201,5 @@ module.exports = {
   searchOpportunitiesValidator,
   applyValidator,
   listQueryValidator,
+  mediaIdParamValidator,
 };

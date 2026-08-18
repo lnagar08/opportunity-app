@@ -41,7 +41,7 @@ const data = {
       isActive: true
     },
     {
-      title: 'Master Data',
+      title: 'Masters Data',
       url: '/master-data',
       icon: Database,
       isActive: true
@@ -53,7 +53,7 @@ const data = {
       isActive: true
     },
     {
-      title: 'Content Management',
+      title: 'Contents Management',
       url: '/content-management',
       icon: LayoutDashboard,
       isActive: true

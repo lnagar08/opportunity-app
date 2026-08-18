@@ -1,7 +1,7 @@
 const bcrypt = require('bcrypt');
 const prisma = require('../../config/db');
 const { ApiError } = require('../../utils/apiResponse');
-const { generateOtp, getOtpExpiry, sendOtpSms } = require('../../utils/otp');
+const { generateOtp, getOtpExpiry, sendOtpSms, sendOtpEmail, OTP_RESEND_COOLDOWN_SECONDS } = require('../../utils/otp');
 
 const SALT_ROUNDS = 10;
 
@@ -130,6 +130,31 @@ const markNotificationRead = async (userId, notificationId) => {
   return prisma.notification.update({ where: { id: notificationId }, data: { isRead: true } });
 };
 
+// Marks a specific set of notifications as read in one call (e.g. the
+// batch currently visible on screen) rather than one request per item.
+// Silently ignores any id that doesn't belong to the user or doesn't
+// exist, instead of erroring the whole batch over one bad id.
+const markNotificationsRead = async (userId, notificationIds) => {
+  const result = await prisma.notification.updateMany({
+    where: { id: { in: notificationIds }, userId },
+    data: { isRead: true },
+  });
+  return { updatedCount: result.count };
+};
+
+const markAllNotificationsRead = async (userId) => {
+  const result = await prisma.notification.updateMany({
+    where: { userId, isRead: false },
+    data: { isRead: true },
+  });
+  return { updatedCount: result.count };
+};
+
+const getUnreadNotificationCount = async (userId) => {
+  const count = await prisma.notification.count({ where: { userId, isRead: false } });
+  return { count };
+};
+
 // ---------------- SETTINGS ----------------
 
 const changePassword = async (userId, currentPassword, newPassword) => {
@@ -146,12 +171,31 @@ const requestChangeMobile = async (userId, newMobileNumber) => {
   const existing = await prisma.user.findUnique({ where: { mobileNumber: newMobileNumber } });
   if (existing) throw new ApiError(409, 'Mobile Number is already in use');
 
+  // Same resend-cooldown protection as the auth OTP flows — this is a
+  // user-initiated resend path too (they can hit "Send OTP" repeatedly on
+  // the change-mobile screen).
+  const lastOtp = await prisma.otpVerification.findFirst({
+    where: { mobileNumber: newMobileNumber, purpose: 'CHANGE_MOBILE' },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (lastOtp) {
+    const secondsSinceLast = (Date.now() - lastOtp.createdAt.getTime()) / 1000;
+    if (secondsSinceLast < OTP_RESEND_COOLDOWN_SECONDS) {
+      const waitSeconds = Math.ceil(OTP_RESEND_COOLDOWN_SECONDS - secondsSinceLast);
+      throw new ApiError(429, `Please wait ${waitSeconds}s before requesting another OTP`);
+    }
+  }
+
   const otpCode = generateOtp();
   const expiresAt = getOtpExpiry();
   await prisma.otpVerification.create({
     data: { userId, mobileNumber: newMobileNumber, otpCode, purpose: 'CHANGE_MOBILE', expiresAt },
   });
   await sendOtpSms(newMobileNumber, otpCode);
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, fullName: true } });
+  sendOtpEmail(user?.email, user?.fullName, otpCode, 'CHANGE_MOBILE').catch(() => {});
+
   return true;
 };
 
@@ -185,6 +229,9 @@ module.exports = {
   getMessages,
   listNotifications,
   markNotificationRead,
+  markNotificationsRead,
+  markAllNotificationsRead,
+  getUnreadNotificationCount,
   changePassword,
   requestChangeMobile,
   confirmChangeMobile,

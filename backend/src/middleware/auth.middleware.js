@@ -64,6 +64,10 @@ const authenticateAdmin = async (req, res, next) => {
       throw new ApiError(401, 'Invalid admin token');
     }
 
+    if (decoded.purpose) {
+     throw new ApiError(401, 'This token cannot be used to authenticate');
+    }
+    
     const admin = await prisma.admin.findUnique({ where: { id: decoded.adminId } });
     if (!admin) {
       throw new ApiError(401, 'Invalid token: admin not found');

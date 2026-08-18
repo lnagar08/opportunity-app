@@ -91,6 +91,38 @@ const adminLogin = async (req, res, next) => {
   }
 };
 
+const adminForgotPassword = async (req, res, next) => {
+  try {
+    await authService.adminForgotPassword(req.body.email);
+    // Always the same response, whether or not the email matched an
+    // Admin — prevents this endpoint from being used to enumerate
+    // registered Admin accounts.
+    return success(res, 200, 'If that email is registered, a reset link has been sent.');
+  } catch (err) {
+    next(err);
+  }
+};
+
+const adminResetPassword = async (req, res, next) => {
+  try {
+    const { token, newPassword } = req.body;
+    await authService.adminResetPassword(token, newPassword);
+    return success(res, 200, 'Password reset successfully');
+  } catch (err) {
+    next(err);
+  }
+};
+
+const adminChangePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    await authService.adminChangePassword(req.admin.id, currentPassword, newPassword);
+    return success(res, 200, 'Password changed successfully');
+  } catch (err) {
+    next(err);
+  }
+};
+
 const forgotPassword = async (req, res, next) => {
   try {
     const { mobileNumber } = req.body;
@@ -118,6 +150,9 @@ module.exports = {
   verifyOtp,
   login,
   adminLogin,
+  adminForgotPassword,
+  adminResetPassword,
+  adminChangePassword,
   forgotPassword,
   resetPassword,
 };

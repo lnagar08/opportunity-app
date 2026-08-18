@@ -4,11 +4,15 @@ const router = express.Router();
 const controller = require('./auth.controller');
 const validate = require('../../middleware/validate.middleware');
 const upload = require('../../middleware/upload.middleware');
+const { authenticateAdmin } = require('../../middleware/auth.middleware');
 const {
   registerGiverValidator,
   registerSeekerValidator,
   loginValidator,
   adminLoginValidator,
+  adminForgotPasswordValidator,
+  adminResetPasswordValidator,
+  adminChangePasswordValidator,
   otpVerifyValidator,
   resendOtpValidator,
   forgotPasswordValidator,
@@ -36,6 +40,14 @@ router.post('/login', loginValidator, validate, controller.login);
 
 // Admin Login (separate Admin table)
 router.post('/admin/login', adminLoginValidator, validate, controller.adminLogin);
+router.post('/admin/forgot-password', adminForgotPasswordValidator, validate, controller.adminForgotPassword);
+router.post('/admin/reset-password', adminResetPasswordValidator, validate, controller.adminResetPassword);
+router.put(
+  '/admin/change-password',
+  authenticateAdmin,
+  adminChangePasswordValidator, validate,
+  controller.adminChangePassword
+);
 
 // Forgot Password flow
 router.post('/forgot-password', forgotPasswordValidator, validate, controller.forgotPassword);

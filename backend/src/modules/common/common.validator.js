@@ -42,6 +42,13 @@ const changeMobileValidator = [
     .isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits'),
 ];
 
+const markNotificationsReadValidator = [
+  body('notificationIds')
+    .isArray({ min: 1 }).withMessage('notificationIds must be a non-empty array'),
+  body('notificationIds.*')
+    .isUUID().withMessage('Each notification ID must be a valid UUID'),
+];
+
 const notificationPreferenceValidator = [
   body('pushEnabled').optional().isBoolean().withMessage('pushEnabled must be boolean'),
   body('emailEnabled').optional().isBoolean().withMessage('emailEnabled must be boolean'),
@@ -55,5 +62,6 @@ module.exports = {
   conversationIdParamValidator,
   changePasswordValidator,
   changeMobileValidator,
+  markNotificationsReadValidator,
   notificationPreferenceValidator,
 };

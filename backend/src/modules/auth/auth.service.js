@@ -1,8 +1,10 @@
 const bcrypt = require('bcrypt');
 const prisma = require('../../config/db');
 const { ApiError } = require('../../utils/apiResponse');
-const { generateToken } = require('../../utils/jwt');
-const { generateOtp, getOtpExpiry, sendOtpSms } = require('../../utils/otp');
+const { generateToken, generateAdminResetToken, verifyAdminResetToken } = require('../../utils/jwt');
+const { generateOtp, getOtpExpiry, sendOtpSms, sendOtpEmail, OTP_RESEND_COOLDOWN_SECONDS } = require('../../utils/otp');
+const { sendMail } = require('../../utils/mailer');
+const { renderEmail, escapeHtml } = require('../../utils/emailTemplates');
 
 const SALT_ROUNDS = 10;
 
@@ -118,7 +120,32 @@ const issueOtp = async (userId, mobileNumber, purpose) => {
   });
 
   await sendOtpSms(mobileNumber, otpCode);
+
+  // Email is sent alongside SMS everywhere an OTP goes out — best-effort,
+  // never blocks/fails this call (sendOtpEmail no-ops if there's no email
+  // on file, and sendMail itself swallows its own errors).
+  if (userId) {
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, fullName: true } });
+    sendOtpEmail(user?.email, user?.fullName, otpCode, purpose).catch(() => {});
+  }
+
   return true;
+};
+
+// Prevents hammering /otp/resend to spam SMS/email credits — one resend
+// per mobile+purpose per OTP_RESEND_COOLDOWN_SECONDS (default 60s).
+const enforceResendCooldown = async (mobileNumber, purpose) => {
+  const lastOtp = await prisma.otpVerification.findFirst({
+    where: { mobileNumber, purpose },
+    orderBy: { createdAt: 'desc' },
+  });
+  if (!lastOtp) return;
+
+  const secondsSinceLast = (Date.now() - lastOtp.createdAt.getTime()) / 1000;
+  if (secondsSinceLast < OTP_RESEND_COOLDOWN_SECONDS) {
+    const waitSeconds = Math.ceil(OTP_RESEND_COOLDOWN_SECONDS - secondsSinceLast);
+    throw new ApiError(429, `Please wait ${waitSeconds}s before requesting another OTP`);
+  }
 };
 
 const resendOtp = async (mobileNumber, purpose) => {
@@ -126,6 +153,7 @@ const resendOtp = async (mobileNumber, purpose) => {
   if (!user) {
     throw new ApiError(404, 'No account found with this Mobile Number');
   }
+  await enforceResendCooldown(mobileNumber, purpose);
   await issueOtp(user.id, mobileNumber, purpose);
   return true;
 };
@@ -193,6 +221,58 @@ const adminLogin = async (email, password) => {
   return { admin, token };
 };
 
+// SECURITY TRADE-OFF: reveals whether an email is a registered Admin.
+// Only appropriate for internal-only admin panels with a small, trusted
+// user base — never use this variant on a public-facing forgot-password
+// endpoint (e.g. the Seeker/Giver one), where enumeration protection matters.
+const adminForgotPassword = async (email) => {
+  const admin = await prisma.admin.findUnique({ where: { email } });
+  if (!admin) {
+    throw new ApiError(404, 'No admin account found with this email');
+  }
+
+  const resetToken = generateAdminResetToken(admin.id);
+  const resetUrl = `${(process.env.PUBLIC_APP_URL || '').replace(/\/+$/, '')}/recover-password?token=${resetToken}`;
+
+  await sendMail({
+    to: admin.email,
+    subject: 'Reset your Admin password',
+    html: renderEmail({
+      preheader: 'Use this link to reset your Admin password. It expires in 30 minutes.',
+      title: 'Reset your password',
+      bodyHtml: `
+        <p>Hi ${escapeHtml(admin.fullName)},</p>
+        <p>We received a request to reset your Admin account password. This link expires in 30 minutes and can only be used once.</p>
+        <p>If you didn't request this, you can safely ignore this email — your password won't be changed.</p>
+      `,
+      cta: { label: 'Reset Password', url: resetUrl },
+    }),
+  });
+};
+
+const adminResetPassword = async (token, newPassword) => {
+  let adminId;
+  try {
+    adminId = verifyAdminResetToken(token);
+  } catch {
+    throw new ApiError(400, 'This reset link is invalid or has expired');
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  await prisma.admin.update({ where: { id: adminId }, data: { passwordHash } });
+  return true;
+};
+
+const adminChangePassword = async (adminId, currentPassword, newPassword) => {
+  const admin = await prisma.admin.findUnique({ where: { id: adminId } });
+  const match = await bcrypt.compare(currentPassword, admin.passwordHash);
+  if (!match) throw new ApiError(400, 'Current Password is incorrect');
+
+  const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  await prisma.admin.update({ where: { id: adminId }, data: { passwordHash } });
+  return true;
+};
+
 const forgotPassword = async (mobileNumber) => {
   const user = await prisma.user.findUnique({ where: { mobileNumber } });
   if (!user) {
@@ -222,6 +302,9 @@ module.exports = {
   verifyOtp,
   login,
   adminLogin,
+  adminForgotPassword,
+  adminResetPassword,
+  adminChangePassword,
   forgotPassword,
   resetPassword,
 };

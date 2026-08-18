@@ -14,6 +14,8 @@ import Opportunity from './pages/Opportunity/Opportunity';
 import MasterData from './pages/Master/MasterData';
 import Reports from './pages/Reports/Reports';
 import ContentManagement from './pages/Content/ContentManagement';
+import ForgotPassword from './pages/ForgotPassword';
+import RecoverPassword from './pages/RecoverPassword';
 
 function App() {
 	return (
@@ -23,6 +25,8 @@ function App() {
 					<Route element={<GuestRoute />}>
 						<Route path="/" element={<Navigate to="/login" />} />
 						<Route path="/login" element={<Login />} />
+						<Route path="/forgot-password" element={<ForgotPassword />} />
+						<Route path="/recover-password" element={<RecoverPassword />} />
 					</Route>
 					
 					<Route element={<ProtectedRoute /> }>

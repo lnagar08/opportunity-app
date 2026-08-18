@@ -170,6 +170,13 @@ const deletePortfolio = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+const deletePortfolioMedia = async (req, res, next) => {
+  try {
+    await service.deletePortfolioMedia(req.user.id, req.params.id, req.params.mediaId);
+    return success(res, 200, 'Media removed successfully');
+  } catch (err) { next(err); }
+};
+
 // ---------------- HOME / SEARCH / DETAILS ----------------
 
 const getHome = async (req, res, next) => {
@@ -232,7 +239,7 @@ module.exports = {
   addSkill, updateSkill, deleteSkill,
   addAward, updateAward, deleteAward,
   addCertification, updateCertification, deleteCertification,
-  addPortfolio, updatePortfolio, deletePortfolio,
+  addPortfolio, updatePortfolio, deletePortfolio, deletePortfolioMedia,
   getHome, searchOpportunities, getOpportunityDetails,
   applyToOpportunity, listMyApplications, getApplicationDetails, withdrawApplication,
 };

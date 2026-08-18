@@ -17,7 +17,7 @@ const ContentManagement = () => {
 					{ label: 'Home', href: '/dashboard' },
 					{ label: 'Content Management', href: '/content-management' }
 				]}
-				heading="Content Management"
+				heading="Contents Management"
 			/>
 
 			{error && <p className="text-destructive mt-4 text-sm">{error}</p>}

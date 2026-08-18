@@ -55,6 +55,27 @@ const markNotificationRead = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+const markNotificationsRead = async (req, res, next) => {
+  try {
+    const data = await service.markNotificationsRead(req.user.id, req.body.notificationIds);
+    return success(res, 200, 'Notifications marked as read', data);
+  } catch (err) { next(err); }
+};
+
+const markAllNotificationsRead = async (req, res, next) => {
+  try {
+    const data = await service.markAllNotificationsRead(req.user.id);
+    return success(res, 200, 'All notifications marked as read', data);
+  } catch (err) { next(err); }
+};
+
+const getUnreadNotificationCount = async (req, res, next) => {
+  try {
+    const data = await service.getUnreadNotificationCount(req.user.id);
+    return success(res, 200, 'Unread count fetched successfully', data);
+  } catch (err) { next(err); }
+};
+
 const changePassword = async (req, res, next) => {
   try {
     await service.changePassword(req.user.id, req.body.currentPassword, req.body.newPassword);
@@ -98,6 +119,9 @@ module.exports = {
   getMessages,
   listNotifications,
   markNotificationRead,
+  markNotificationsRead,
+  markAllNotificationsRead,
+  getUnreadNotificationCount,
   changePassword,
   requestChangeMobile,
   confirmChangeMobile,

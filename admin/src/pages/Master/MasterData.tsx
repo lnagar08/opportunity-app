@@ -9,7 +9,7 @@ const MasterData = () => {
 					{ label: 'Home', href: '/dashboard' },
 					{ label: 'Master Data', href: '/master-data' }
 				]}
-				heading="Master Data"
+				heading="Masters Data"
 			/>
 
 			<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

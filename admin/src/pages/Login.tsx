@@ -5,7 +5,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { SunIcon, MoonIcon } from 'lucide-react';
 import logoDarkTheme from '@/assets/logo-dark-theme.svg';
 import logoLightTheme from '@/assets/logo-light-theme.svg';
-import { useNavigate } from 'react-router';
+import { useNavigate, Link } from 'react-router';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -110,6 +110,11 @@ const Login = () => {
                             </Button>
 						</form>
 					</Form>
+					<div className="flex flex-col gap-1 text-sm text-center mt-2">
+						<Link to="/forgot-password" className="text-blue-600">
+							I forgot my password
+						</Link>
+					</div>
 				</CardContent>
 			</Card>
 		</div>

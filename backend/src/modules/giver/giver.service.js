@@ -93,8 +93,8 @@ const createOpportunity = async (giverId, payload, mediaFiles = []) => {
       workMode,
       city: city || null,
       state: state || null,
-      latitude: latitude !== undefined && latitude !== null? parseFloat(latitude): null ?? null,
-      longitude: longitude !== undefined && longitude !== null? parseFloat(longitude): null ?? null,
+      latitude: latitude ?? null,
+      longitude: longitude ?? null,
       opportunityDate: opportunityDate ? new Date(opportunityDate) : null,
       opportunityTime: opportunityTime || null,
       status: 'ACTIVE',
@@ -117,7 +117,7 @@ const createOpportunity = async (giverId, payload, mediaFiles = []) => {
   return opportunity;
 };
 
-const updateOpportunity = async (giverId, opportunityId, payload) => {
+const updateOpportunity = async (giverId, opportunityId, payload, mediaFiles = []) => {
   await ensureOpportunityOwnership(opportunityId, giverId);
 
   const {
@@ -126,47 +126,63 @@ const updateOpportunity = async (giverId, opportunityId, payload) => {
   } = payload;
 
   if (categoryIds) {
-    const categories = await prisma.category.findMany({ 
-      where: { id: { in: categoryIds } } 
-    });
+    const categories = await prisma.category.findMany({ where: { id: { in: categoryIds } } });
     if (categories.length !== categoryIds.length) {
       throw new ApiError(400, 'One or more Category IDs are invalid');
     }
+    await prisma.opportunityCategory.deleteMany({ where: { opportunityId } });
   }
 
-  const updated = await prisma.$transaction(async (tx) => {
-    if (categoryIds) {
-      await tx.opportunityCategory.deleteMany({ 
-        where: { opportunityId } 
-      });
-    }
-  
-
-    return await tx.opportunity.update({
-      where: { id: opportunityId },
-      data: {
-        ...(title && { title }),
-        ...(description && { description }),
-        ...(budgetType && { budgetType }),
-        ...(budgetAmount !== undefined && { budgetAmount }),
-        ...(workMode && { workMode }),
-        ...(city !== undefined && { city }),
-        ...(state !== undefined && { state }),
-        ...(latitude !== undefined && latitude !== null && { latitude: parseFloat(latitude) }), 
-        ...(longitude !== undefined && longitude !== null && { longitude: parseFloat(longitude) }),
-        ...(opportunityDate && { opportunityDate: new Date(opportunityDate) }),
-        ...(opportunityTime && { opportunityTime }),
-        ...(categoryIds && {
-          categories: { 
-            create: categoryIds.map((categoryId) => ({ categoryId })) 
-          },
-        }),
-      },
-      include: { categories: { include: { category: true } }, media: true },
-    });
+  const updated = await prisma.opportunity.update({
+    where: { id: opportunityId },
+    data: {
+      ...(title && { title }),
+      ...(description && { description }),
+      ...(budgetType && { budgetType }),
+      ...(budgetAmount !== undefined && { budgetAmount }),
+      ...(workMode && { workMode }),
+      ...(city !== undefined && { city }),
+      ...(state !== undefined && { state }),
+      ...(latitude !== undefined && { latitude }),
+      ...(longitude !== undefined && { longitude }),
+      ...(opportunityDate && { opportunityDate: new Date(opportunityDate) }),
+      ...(opportunityTime && { opportunityTime }),
+      ...(categoryIds && {
+        categories: { create: categoryIds.map((categoryId) => ({ categoryId })) },
+      }),
+      // Additive, matching create semantics — new files are appended to
+      // the existing gallery, not a wholesale replace. Removing a specific
+      // item is a separate call (see removeOpportunityMedia below), since
+      // a single multipart PUT can't express "keep these, drop those, add
+      // these" without a much messier payload contract.
+      ...(mediaFiles.length > 0 && {
+        media: {
+          create: mediaFiles.map((file) => ({
+            ownerType: 'OPPORTUNITY',
+            type: file.type,
+            url: file.url,
+            fileName: file.fileName,
+            sizeBytes: file.sizeBytes,
+          })),
+        },
+      }),
+    },
+    include: { categories: { include: { category: true } }, media: true },
   });
 
   return updated;
+};
+
+const removeOpportunityMedia = async (giverId, opportunityId, mediaId) => {
+  await ensureOpportunityOwnership(opportunityId, giverId);
+
+  const media = await prisma.media.findUnique({ where: { id: mediaId } });
+  if (!media || media.opportunityId !== opportunityId) {
+    throw new ApiError(404, 'Media item not found on this opportunity');
+  }
+
+  await prisma.media.delete({ where: { id: mediaId } });
+  return { id: mediaId };
 };
 
 const listMyOpportunities = async (giverId, { page = 1, limit = 20, status }) => {
@@ -209,7 +225,7 @@ const closeOpportunity = async (giverId, opportunityId) => {
     where: { id: opportunityId },
     data: { status: 'CLOSED' },
   });
-  await notifyApplicantsOfClosure(opportunityId); 
+  await notifyApplicantsOfClosure(opportunityId);
   return opportunity;
 };
 
@@ -307,6 +323,7 @@ module.exports = {
   getDashboard,
   createOpportunity,
   updateOpportunity,
+  removeOpportunityMedia,
   listMyOpportunities,
   getOpportunityDetails,
   closeOpportunity,

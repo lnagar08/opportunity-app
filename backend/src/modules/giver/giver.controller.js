@@ -67,8 +67,18 @@ const updateOpportunity = async (req, res, next) => {
     if (payload.categoryIds && !Array.isArray(payload.categoryIds)) {
       payload.categoryIds = JSON.parse(payload.categoryIds);
     }
-    const opportunity = await service.updateOpportunity(req.user.id, req.params.id, payload);
+    const mediaFiles = (req.files || []).map((file) => mapUploadedFile(req, file));
+    const opportunity = await service.updateOpportunity(req.user.id, req.params.id, payload, mediaFiles);
     return success(res, 200, 'Opportunity updated successfully', opportunity);
+  } catch (err) {
+    next(err);
+  }
+};
+
+const removeOpportunityMedia = async (req, res, next) => {
+  try {
+    await service.removeOpportunityMedia(req.user.id, req.params.id, req.params.mediaId);
+    return success(res, 200, 'Media removed successfully');
   } catch (err) {
     next(err);
   }
@@ -149,6 +159,7 @@ module.exports = {
   getDashboard,
   createOpportunity,
   updateOpportunity,
+  removeOpportunityMedia,
   listMyOpportunities,
   getOpportunityDetails,
   closeOpportunity,

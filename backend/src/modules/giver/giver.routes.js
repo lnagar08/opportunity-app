@@ -14,6 +14,7 @@ const {
   applicationIdParamValidator,
   updateApplicationStatusValidator,
   listQueryValidator,
+  mediaIdParamValidator,
 } = require('./giver.validator');
 
 // All routes below require an authenticated Opportunity Giver
@@ -43,6 +44,11 @@ router.post(
 router.get('/opportunities', listQueryValidator, validate, controller.listMyOpportunities);
 router.get('/opportunities/:id', idParamValidator, validate, controller.getOpportunityDetails);
 router.put('/opportunities/:id', upload.array('media', 10), updateOpportunityValidator, validate, controller.updateOpportunity);
+router.delete(
+  '/opportunities/:id/media/:mediaId',
+  idParamValidator, mediaIdParamValidator, validate,
+  controller.removeOpportunityMedia
+);
 router.patch('/opportunities/:id/close', idParamValidator, validate, controller.closeOpportunity);
 router.delete('/opportunities/:id', idParamValidator, validate, controller.deleteOpportunity);
 

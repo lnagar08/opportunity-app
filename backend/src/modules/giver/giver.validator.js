@@ -139,6 +139,10 @@ const opportunityIdParamValidator = [
   param('opportunityId').isUUID().withMessage('Invalid Opportunity ID'),
 ];
 
+const mediaIdParamValidator = [
+  param('mediaId').isUUID().withMessage('Invalid Media ID'),
+];
+
 const applicationIdParamValidator = [
   param('applicationId').isUUID().withMessage('Invalid Application ID'),
 ];
@@ -165,4 +169,5 @@ module.exports = {
   applicationIdParamValidator,
   updateApplicationStatusValidator,
   listQueryValidator,
+  mediaIdParamValidator,
 };
