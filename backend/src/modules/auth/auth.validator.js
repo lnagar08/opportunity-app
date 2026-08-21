@@ -214,6 +214,10 @@ const adminChangePasswordValidator = [
     .withMessage('Confirm New Password must match New Password'),
 ];
 
+const refreshTokenValidator = [
+  body('refreshToken').notEmpty().withMessage('refreshToken is required'),
+];
+
 module.exports = {
   registerGiverValidator,
   registerSeekerValidator,
@@ -226,4 +230,5 @@ module.exports = {
   resendOtpValidator,
   forgotPasswordValidator,
   resetPasswordValidator,
+  refreshTokenValidator,
 };

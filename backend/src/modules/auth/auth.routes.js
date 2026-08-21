@@ -17,6 +17,7 @@ const {
   resendOtpValidator,
   forgotPasswordValidator,
   resetPasswordValidator,
+  refreshTokenValidator,
 } = require('./auth.validator');
 
 // Screen 5: Opportunity Giver Registration
@@ -52,5 +53,8 @@ router.put(
 // Forgot Password flow
 router.post('/forgot-password', forgotPasswordValidator, validate, controller.forgotPassword);
 router.post('/reset-password', resetPasswordValidator, validate, controller.resetPassword);
+
+router.post('/refresh-token', refreshTokenValidator, validate, controller.refreshAccessToken);
+router.post('/logout', refreshTokenValidator, validate, controller.logout);
 
 module.exports = router;

@@ -166,6 +166,7 @@ model User {
   reportsAgainst        Report[]            @relation("ReportedUser")
   supportMessages      SupportMessage[]
   invitesReceived      OpportunityInvite[] @relation("InvitedSeeker")
+  refreshTokens        RefreshToken[]
 
   @@map("users")
 }
@@ -626,6 +627,26 @@ model Admin {
 
   updatedContentPages ContentPage[]
   opportunityInvitesSent OpportunityInvite[]
+  refreshTokens        RefreshToken[]
 
   @@map("admins")
+}
+
+model RefreshToken {
+  id               String    @id @default(uuid())
+  tokenHash        String    @unique
+
+  userId           String?
+  user             User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  adminId          String?
+  admin            Admin?    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  replacedByTokenId String?
+
+  createdAt        DateTime  @default(now())
+
+  @@map("refresh_tokens")
 }

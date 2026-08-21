@@ -61,10 +61,11 @@ const verifyOtp = async (req, res, next) => {
 const login = async (req, res, next) => {
   try {
     const { mobileNumber, password } = req.body;
-    const { user, token } = await authService.login(mobileNumber, password);
+    const { user, token, refreshToken } = await authService.login(mobileNumber, password);
 
     return success(res, 200, 'Login successful', {
       token,
+      refreshToken,
       user: {
         id: user.id,
         fullName: user.fullName,
@@ -81,9 +82,10 @@ const login = async (req, res, next) => {
 const adminLogin = async (req, res, next) => {
   try {
     const { email, password } = req.body;
-    const { admin, token } = await authService.adminLogin(email, password);
+    const { admin, token, refreshToken } = await authService.adminLogin(email, password);
     return success(res, 200, 'Login successful', {
       token,
+      refreshToken,
       admin: { id: admin.id, fullName: admin.fullName, email: admin.email, isSuperAdmin: admin.isSuperAdmin },
     });
   } catch (err) {
@@ -143,6 +145,24 @@ const resetPassword = async (req, res, next) => {
   }
 };
 
+const refreshAccessToken = async (req, res, next) => {
+  try {
+    const { accessToken, refreshToken } = await authService.refreshAccessToken(req.body.refreshToken);
+    return success(res, 200, 'Token refreshed successfully', { accessToken, refreshToken });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const logout = async (req, res, next) => {
+  try {
+    await authService.logout(req.body.refreshToken);
+    return success(res, 200, 'Logged out successfully');
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   registerGiver,
   registerSeeker,
@@ -155,4 +175,6 @@ module.exports = {
   adminChangePassword,
   forgotPassword,
   resetPassword,
+  refreshAccessToken,
+  logout,
 };

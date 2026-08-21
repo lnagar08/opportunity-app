@@ -5,6 +5,7 @@ const { generateToken, generateAdminResetToken, verifyAdminResetToken } = requir
 const { generateOtp, getOtpExpiry, sendOtpSms, sendOtpEmail, OTP_RESEND_COOLDOWN_SECONDS } = require('../../utils/otp');
 const { sendMail } = require('../../utils/mailer');
 const { renderEmail, escapeHtml } = require('../../utils/emailTemplates');
+const { generateRefreshToken, rotateRefreshToken, revokeRefreshToken, revokeAllRefreshTokensFor } = require('../../utils/refreshToken');
 
 const SALT_ROUNDS = 10;
 
@@ -205,7 +206,8 @@ const login = async (mobileNumber, password) => {
   await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
 
   const token = generateToken({ id: user.id, role: user.role });
-  return { user, token };
+  const refreshToken = await generateRefreshToken({ userId: user.id });
+  return { user, token, refreshToken };
 };
 
 const adminLogin = async (email, password) => {
@@ -218,7 +220,8 @@ const adminLogin = async (email, password) => {
     throw new ApiError(401, 'Invalid Email or Password');
   }
   const token = generateToken({ adminId: admin.id, isSuperAdmin: admin.isSuperAdmin });
-  return { admin, token };
+  const refreshToken = await generateRefreshToken({ adminId: admin.id });
+  return { admin, token, refreshToken };
 };
 
 // SECURITY TRADE-OFF: reveals whether an email is a registered Admin.
@@ -295,6 +298,31 @@ const resetPassword = async (mobileNumber, otp, newPassword) => {
   return true;
 };
 
+const refreshAccessToken = async (rawRefreshToken) => {
+  const rotated = await rotateRefreshToken(rawRefreshToken);
+  if (!rotated) {
+    throw new ApiError(401, 'Refresh token is invalid, expired, or already used');
+  }
+
+  let accessToken;
+  if (rotated.userId) {
+    const user = await prisma.user.findUnique({ where: { id: rotated.userId } });
+    if (!user || user.status !== 'ACTIVE') throw new ApiError(401, 'Account is no longer active');
+    accessToken = generateToken({ id: user.id, role: user.role });
+  } else {
+    const admin = await prisma.admin.findUnique({ where: { id: rotated.adminId } });
+    if (!admin) throw new ApiError(401, 'Admin not found');
+    accessToken = generateToken({ adminId: admin.id, isSuperAdmin: admin.isSuperAdmin });
+  }
+
+  return { accessToken, refreshToken: rotated.rawToken };
+};
+
+const logout = async (rawRefreshToken) => {
+  await revokeRefreshToken(rawRefreshToken);
+  return true;
+};
+
 module.exports = {
   registerGiver,
   registerSeeker,
@@ -307,4 +335,6 @@ module.exports = {
   adminChangePassword,
   forgotPassword,
   resetPassword,
+  refreshAccessToken,
+  logout,
 };
