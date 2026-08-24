@@ -48,9 +48,9 @@ const registerGiver = async (payload) => {
     include: { giverProfile: true },
   });
 
-  await issueOtp(user.id, mobileNumber, 'REGISTRATION');
-
-  return user;
+  //await issueOtp(user.id, mobileNumber, 'REGISTRATION');
+  const otpCode = await issueOtp(user.id, mobileNumber, 'REGISTRATION');
+  return { ...user, otpCode };
 };
 
 const registerSeeker = async (payload, disabilityCertificateUrl) => {
@@ -107,9 +107,9 @@ const registerSeeker = async (payload, disabilityCertificateUrl) => {
     include: { seekerProfile: true },
   });
 
-  await issueOtp(user.id, mobileNumber, 'REGISTRATION');
+  const otpCode = await issueOtp(user.id, mobileNumber, 'REGISTRATION');
 
-  return user;
+  return { ...user, otpCode };
 };
 
 const issueOtp = async (userId, mobileNumber, purpose) => {
@@ -129,8 +129,8 @@ const issueOtp = async (userId, mobileNumber, purpose) => {
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, fullName: true } });
     sendOtpEmail(user?.email, user?.fullName, otpCode, purpose).catch(() => {});
   }
-
-  return true;
+  return otpCode;
+  //return true;
 };
 
 // Prevents hammering /otp/resend to spam SMS/email credits — one resend
@@ -155,8 +155,8 @@ const resendOtp = async (mobileNumber, purpose) => {
     throw new ApiError(404, 'No account found with this Mobile Number');
   }
   await enforceResendCooldown(mobileNumber, purpose);
-  await issueOtp(user.id, mobileNumber, purpose);
-  return true;
+  const otpCode = await issueOtp(user.id, mobileNumber, purpose);
+  return { otpCode };
 };
 
 const verifyOtp = async (mobileNumber, otp, purpose) => {
@@ -281,8 +281,8 @@ const forgotPassword = async (mobileNumber) => {
   if (!user) {
     throw new ApiError(404, 'No account found with this Mobile Number');
   }
-  await issueOtp(user.id, mobileNumber, 'FORGOT_PASSWORD');
-  return true;
+  const otpCode = await issueOtp(user.id, mobileNumber, 'FORGOT_PASSWORD');
+  return { otpCode };
 };
 
 const resetPassword = async (mobileNumber, otp, newPassword) => {

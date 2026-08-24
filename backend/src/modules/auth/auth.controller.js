@@ -10,6 +10,7 @@ const registerGiver = async (req, res, next) => {
       userId: user.id,
       mobileNumber: user.mobileNumber,
       role: user.role,
+      otpCode: user.otpCode, // Include the OTP code in the response
     });
   } catch (err) {
     next(err);
@@ -24,6 +25,7 @@ const registerSeeker = async (req, res, next) => {
       userId: user.id,
       mobileNumber: user.mobileNumber,
       role: user.role,
+      otpCode: user.otpCode, // Include the OTP code in the response
     });
   } catch (err) {
     next(err);
@@ -33,8 +35,8 @@ const registerSeeker = async (req, res, next) => {
 const resendOtp = async (req, res, next) => {
   try {
     const { mobileNumber, purpose } = req.body;
-    await authService.resendOtp(mobileNumber, purpose);
-    return success(res, 200, 'OTP resent successfully');
+    const { otpCode } = await authService.resendOtp(mobileNumber, purpose);
+    return success(res, 200, 'OTP resent successfully', { otpCode });
   } catch (err) {
     next(err);
   }
@@ -128,8 +130,8 @@ const adminChangePassword = async (req, res, next) => {
 const forgotPassword = async (req, res, next) => {
   try {
     const { mobileNumber } = req.body;
-    await authService.forgotPassword(mobileNumber);
-    return success(res, 200, 'OTP sent to reset your password');
+    const { otpCode } = await authService.forgotPassword(mobileNumber);
+    return success(res, 200, 'OTP sent to reset your password', { otpCode });
   } catch (err) {
     next(err);
   }
