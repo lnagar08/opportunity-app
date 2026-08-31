@@ -1,4 +1,5 @@
 const { body, param, query } = require('express-validator');
+const { stateExistsValidator, cityValidator } = require('../../utils/locationValidator');
 
 const updateProfileValidator = [
   body('fullName')
@@ -10,15 +11,8 @@ const updateProfileValidator = [
     .optional({ checkFalsy: true })
     .isLength({ max: 150 }).withMessage('Organization Name must be under 150 characters'),
 
-  body('city')
-    .optional()
-    .trim()
-    .notEmpty().withMessage('City cannot be empty'),
-
-  body('state')
-    .optional()
-    .trim()
-    .notEmpty().withMessage('State cannot be empty'),
+  stateExistsValidator('state', true),
+  ...cityValidator('city', 'state', 'isManualCity', true),
 
   body('email')
     .optional({ checkFalsy: true })
@@ -63,6 +57,11 @@ const createOpportunityValidator = [
     .if(body('workMode').not().equals('REMOTE'))
     .trim()
     .notEmpty().withMessage('State is required for on-site/hybrid opportunities'),
+  
+  // ADD — validates against master data, but skips silently when the
+  // value is empty (i.e. a REMOTE opportunity with no city/state at all)
+  stateExistsValidator('state', true),
+  ...cityValidator('city', 'state', 'isManualCity', true),
 
   body('latitude')
     .optional()
@@ -121,6 +120,11 @@ const updateOpportunityValidator = [
   body('longitude')
     .optional()
     .isFloat({ min: -180, max: 180 }).withMessage('Longitude must be between -180 and 180'),
+
+  // ADD — validates against master data, but skips silently when the
+  // value is empty (i.e. a REMOTE opportunity with no city/state at all)
+  stateExistsValidator('state', true),
+  ...cityValidator('city', 'state', 'isManualCity', true),
 
   body('opportunityDate')
     .optional({ checkFalsy: true })

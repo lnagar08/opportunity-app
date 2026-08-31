@@ -434,9 +434,10 @@ const searchOpportunitiesByRadius = async ({
     conditions.push(Prisma.sql`o."budgetAmount" <= ${Number(budgetMax)}`);
   }
   if (datePosted) {
-    const hoursMap = { '24h': 24, '7d': 24 * 7, '30d': 24 * 30 };
-    const since = new Date(Date.now() - hoursMap[datePosted] * 60 * 60 * 1000);
-    conditions.push(Prisma.sql`o."createdAt" >= ${since}`);
+    const since = buildDatePostedFilter(datePosted);
+    if (since) {
+      conditions.push(Prisma.sql`o."createdAt" >= ${since}`);
+    }
   }
   if (categoryId) {
     conditions.push(Prisma.sql`EXISTS (
@@ -496,6 +497,23 @@ const searchOpportunitiesByRadius = async ({
   return { items, total, page, limit };
 };
 
+// datePosted accepts either a relative bucket ('24h' | '7d' | '30d') or an
+// exact date ('YYYY-MM-DD') meaning "posted on or after that calendar
+// date" — used by both the normal and radius search branches, so it's
+// factored out once instead of duplicated.
+const buildDatePostedFilter = (datePosted) => {
+  if (!datePosted) return null;
+
+  const hoursMap = { '24h': 24, '7d': 24 * 7, '30d': 24 * 30 };
+  if (hoursMap[datePosted]) {
+    return new Date(Date.now() - hoursMap[datePosted] * 60 * 60 * 1000);
+  }
+
+  // Exact date string — start of that day, local server time
+  const parsed = new Date(`${datePosted}T00:00:00`);
+  return isNaN(parsed.getTime()) ? null : parsed;
+};
+
 const searchOpportunities = async (filters) => {
   const {
     keyword, categoryId, budgetMin, budgetMax, datePosted,
@@ -535,8 +553,8 @@ const searchOpportunities = async (filters) => {
     where.workMode = workMode;
   }
   if (datePosted) {
-    const hoursMap = { '24h': 24, '7d': 24 * 7, '30d': 24 * 30 };
-    where.createdAt = { gte: new Date(Date.now() - hoursMap[datePosted] * 60 * 60 * 1000) };
+    const since = buildDatePostedFilter(datePosted);
+    if (since) where.createdAt = { gte: since };
   }
 
   const [items, total] = await Promise.all([

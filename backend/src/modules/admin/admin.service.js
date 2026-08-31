@@ -505,6 +505,88 @@ const inviteSeekerToOpportunity = async (opportunityId, seekerId, adminId) => {
   return invite;
 };
 
+const listStatesAdmin = async () => prisma.state.findMany({ orderBy: { name: 'asc' } });
+
+const listCitiesAdmin = async (stateId) =>
+  prisma.city.findMany({
+    where: { ...(stateId && { stateId }) },
+    include: { state: { select: { id: true, name: true } } },
+    orderBy: { name: 'asc' },
+  });
+
+const createCity = async (payload) => {
+  const state = await prisma.state.findUnique({ where: { id: payload.stateId } });
+  if (!state) throw new ApiError(404, 'State not found');
+
+  const existing = await prisma.city.findFirst({ where: { stateId: payload.stateId, name: payload.name } });
+  if (existing) throw new ApiError(409, 'City already exists for this State');
+
+  return prisma.city.create({ data: { name: payload.name, stateId: payload.stateId, isActive: payload.isActive ?? true } });
+};
+
+const updateCity = async (id, payload) => {
+  const existing = await prisma.city.findUnique({ where: { id } });
+  if (!existing) throw new ApiError(404, 'City not found');
+
+  // Only re-check the state if the caller is actually changing it
+  if (payload.stateId && payload.stateId !== existing.stateId) {
+    const state = await prisma.state.findUnique({ where: { id: payload.stateId } });
+    if (!state) throw new ApiError(404, 'State not found');
+  }
+
+  return prisma.city.update({
+    where: { id },
+    data: {
+      ...(payload.name && { name: payload.name }),
+      ...(payload.stateId && { stateId: payload.stateId }),
+      ...(payload.isActive !== undefined && { isActive: payload.isActive }),
+    },
+  });
+};
+
+const deleteCity = async (id) => {
+  const existing = await prisma.city.findUnique({ where: { id } });
+  if (!existing) throw new ApiError(404, 'City not found');
+  return prisma.city.update({ where: { id }, data: { isActive: false } });
+};
+
+const createState = async (payload) => {
+  const existing = await prisma.state.findUnique({ where: { name: payload.name } });
+  if (existing) throw new ApiError(409, 'State with this name already exists');
+
+  return prisma.state.create({
+    data: { name: payload.name, code: payload.code || null, isActive: payload.isActive ?? true },
+  });
+};
+
+const updateState = async (id, payload) => {
+  const existing = await prisma.state.findUnique({ where: { id } });
+  if (!existing) throw new ApiError(404, 'State not found');
+
+  if (payload.name && payload.name !== existing.name) {
+    const nameClash = await prisma.state.findUnique({ where: { name: payload.name } });
+    if (nameClash) throw new ApiError(409, 'State with this name already exists');
+  }
+
+  return prisma.state.update({
+    where: { id },
+    data: {
+      ...(payload.name && { name: payload.name }),
+      ...(payload.code !== undefined && { code: payload.code || null }),
+      ...(payload.isActive !== undefined && { isActive: payload.isActive }),
+    },
+  });
+};
+
+// Soft-deactivate, matching Category/DisabilityType — Seekers/Givers and
+// Cities already reference a State by id, so a hard delete would either
+// fail on the FK (City.stateId is required) or orphan data.
+const deleteState = async (id) => {
+  const existing = await prisma.state.findUnique({ where: { id } });
+  if (!existing) throw new ApiError(404, 'State not found');
+  return prisma.state.update({ where: { id }, data: { isActive: false } });
+};
+
 module.exports = {
   getDashboardStats,
   listUsers,
@@ -520,4 +602,6 @@ module.exports = {
   listReports, getReportDetails, updateReportStatus,
   listAdmins, createAdmin,
   listInviteCandidates, inviteSeekerToOpportunity,
+  listStatesAdmin, listCitiesAdmin, createCity, updateCity, deleteCity,
+  createState, updateState, deleteState,
 };

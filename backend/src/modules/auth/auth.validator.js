@@ -1,4 +1,5 @@
 const { body } = require('express-validator');
+const { stateExistsValidator, cityValidator } = require('../../utils/locationValidator');
 
 const registerGiverValidator = [
   body('fullName')
@@ -30,13 +31,8 @@ const registerGiverValidator = [
     .optional({ checkFalsy: true })
     .isLength({ max: 150 }).withMessage('Organization Name must be under 150 characters'),
 
-  body('city')
-    .trim()
-    .notEmpty().withMessage('City is required'),
-
-  body('state')
-    .trim()
-    .notEmpty().withMessage('State is required'),
+  stateExistsValidator('state'),
+  ...cityValidator('city', 'state', 'isManualCity'),
 
   body('acceptedTerms')
     .notEmpty().withMessage('You must accept Terms & Privacy Policy')
@@ -83,13 +79,8 @@ const registerSeekerValidator = [
     .optional({ checkFalsy: true })
     .isIn(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).withMessage('Invalid Gender value'),
 
-  body('city')
-    .trim()
-    .notEmpty().withMessage('City is required'),
-
-  body('state')
-    .trim()
-    .notEmpty().withMessage('State is required'),
+  stateExistsValidator('state'),
+  ...cityValidator('city', 'state', 'isManualCity'),
 
   body('disabilityTypeId')
     .notEmpty().withMessage('Disability Type is required')

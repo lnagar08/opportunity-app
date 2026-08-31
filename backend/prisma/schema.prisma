@@ -650,3 +650,27 @@ model RefreshToken {
 
   @@map("refresh_tokens")
 }
+
+model State {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  code      String?  @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  cities    City[]
+
+  @@map("states")
+}
+
+model City {
+  id        String   @id @default(uuid())
+  name      String
+  stateId   String
+  state     State    @relation(fields: [stateId], references: [id], onDelete: Cascade)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@unique([stateId, name])
+  @@map("cities")
+}

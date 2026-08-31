@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { query, validationResult } = require('express-validator');
 
 const controller = require('./master.controller');
 
@@ -14,5 +15,21 @@ router.get('/disability-types', controller.listDisabilityTypes);
 
 // Screen 20 (Create/Edit Opportunity) + Screen 10 (Search filter) -> Category dropdown
 router.get('/categories', controller.listCategories);
+
+router.get(
+  '/states',
+  controller.listStates
+);
+
+router.get(
+  '/cities',
+  query('stateId').optional().isUUID().withMessage('stateId must be a valid UUID'),
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(422).json({ success: false, message: 'Validation failed', errors: errors.array() });
+    next();
+  },
+  controller.listCities
+);
 
 module.exports = router;

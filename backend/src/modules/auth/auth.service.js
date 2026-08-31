@@ -204,7 +204,10 @@ const login = async (mobileNumber, password) => {
   }
 
   await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
-
+  if(user.role === 'SEEKER'){
+    const seekerProfile = await prisma.seekerProfile.findUnique({ where: { userId: user.id }, select: { isProfileCompleted: true } });
+    user.isProfileCompleted = seekerProfile?.isProfileCompleted || false;
+  }
   const token = generateToken({ id: user.id, role: user.role });
   const refreshToken = await generateRefreshToken({ userId: user.id });
   return { user, token, refreshToken };

@@ -198,6 +198,58 @@ const inviteSeeker = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+const listStates = async (req, res, next) => {
+  try {
+    const data = await service.listStatesAdmin();
+    return success(res, 200, 'States fetched successfully', data);
+  } catch (err) { next(err); }
+};
+const listCities = async (req, res, next) => {
+  try {
+    const data = await service.listCitiesAdmin(req.query.stateId);
+    return success(res, 200, 'Cities fetched successfully', data);
+  } catch (err) { next(err); }
+};
+const createCity = async (req, res, next) => {
+  try {
+    const data = await service.createCity(req.body);
+    return success(res, 201, 'City created successfully', data);
+  } catch (err) { next(err); }
+};
+const updateCity = async (req, res, next) => {
+  try {
+    const data = await service.updateCity(req.params.id, req.body);
+    return success(res, 200, 'City updated successfully', data);
+  } catch (err) { next(err); }
+};
+const deleteCity = async (req, res, next) => {
+  try {
+    await service.deleteCity(req.params.id);
+    return success(res, 200, 'City deactivated successfully');
+  } catch (err) { next(err); }
+};
+
+const createState = async (req, res, next) => {
+  try {
+    const data = await service.createState(req.body);
+    return success(res, 201, 'State created successfully', data);
+  } catch (err) { next(err); }
+};
+
+const updateState = async (req, res, next) => {
+  try {
+    const data = await service.updateState(req.params.id, req.body);
+    return success(res, 200, 'State updated successfully', data);
+  } catch (err) { next(err); }
+};
+
+const deleteState = async (req, res, next) => {
+  try {
+    await service.deleteState(req.params.id);
+    return success(res, 200, 'State deactivated successfully');
+  } catch (err) { next(err); }
+};
+
 module.exports = {
   getDashboard,
   listSeekers, listGivers, getUserDetails, updateUserStatus, reviewCertificate,
@@ -207,4 +259,6 @@ module.exports = {
   listReports, getReportDetails, updateReportStatus,
   listAdmins, createAdmin,
   listInviteCandidates, inviteSeeker,
+  listStates, listCities, createCity, updateCity, deleteCity,
+  createState, updateState, deleteState,
 };

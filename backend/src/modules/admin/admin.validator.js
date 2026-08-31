@@ -102,6 +102,27 @@ const inviteSeekerValidator = [
     .isUUID().withMessage('seekerId must be a valid UUID'),
 ];
 
+const cityCreateValidator = [
+  body('name').trim().notEmpty().withMessage('Name is required').isLength({ max: 100 }),
+  body('stateId').notEmpty().withMessage('stateId is required').isUUID().withMessage('stateId must be a valid UUID'),
+  body('isActive').optional().isBoolean().withMessage('isActive must be boolean'),
+];
+
+const cityUpdateValidator = [
+  body('name').optional().trim().notEmpty().withMessage('Name cannot be empty').isLength({ max: 100 }),
+  body('stateId').optional().isUUID().withMessage('stateId must be a valid UUID'),
+  body('isActive').optional().isBoolean().withMessage('isActive must be boolean'),
+];
+
+const stateValidator = [
+  body('name').trim().notEmpty().withMessage('Name is required')
+    .isLength({ max: 100 }).withMessage('Name must be under 100 characters'),
+  body('code')
+    .optional({ checkFalsy: true })
+    .isLength({ max: 10 }).withMessage('Code must be under 10 characters'),
+  body('isActive').optional().isBoolean().withMessage('isActive must be boolean'),
+];
+
 module.exports = {
   idParamValidator,
   listUsersValidator,
@@ -115,4 +136,7 @@ module.exports = {
   createAdminValidator,
   listInviteCandidatesValidator,
   inviteSeekerValidator,
+  cityCreateValidator,
+  cityUpdateValidator,
+  stateValidator,
 };

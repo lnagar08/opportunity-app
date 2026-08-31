@@ -17,6 +17,9 @@ const {
   createAdminValidator,
   listInviteCandidatesValidator,
   inviteSeekerValidator,
+  cityCreateValidator,
+  cityUpdateValidator,
+  stateValidator,
 } = require('./admin.validator');
 
 // All routes below require a valid Admin token
@@ -88,5 +91,15 @@ router.patch('/reports/:id', updateReportValidator, validate, controller.updateR
 // Admin management (Super Admin only)
 router.get('/admins', requireSuperAdmin, controller.listAdmins);
 router.post('/admins', requireSuperAdmin, createAdminValidator, validate, controller.createAdmin);
+
+router.get('/master/states', controller.listStates);
+router.get('/master/cities', controller.listCities);
+router.post('/master/cities', cityCreateValidator, validate, controller.createCity);
+router.put('/master/cities/:id', idParamValidator, cityUpdateValidator, validate, controller.updateCity);
+router.delete('/master/cities/:id', idParamValidator, validate, controller.deleteCity);
+
+router.post('/master/states', stateValidator, validate, controller.createState);
+router.put('/master/states/:id', idParamValidator, stateValidator, validate, controller.updateState);
+router.delete('/master/states/:id', idParamValidator, validate, controller.deleteState);
 
 module.exports = router;

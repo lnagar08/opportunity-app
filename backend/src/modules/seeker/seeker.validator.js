@@ -1,5 +1,5 @@
 const { body, param, query } = require('express-validator');
-
+const { stateExistsValidator, cityValidator } = require('../../utils/locationValidator');
 // ---------------- PROFILE (core) ----------------
 
 const updateProfileValidator = [
@@ -21,15 +21,8 @@ const updateProfileValidator = [
     .trim()
     .isLength({ min: 2, max: 100 }).withMessage('Full Name must be 2-100 characters'),
 
-  body('city')
-    .optional()
-    .trim()
-    .notEmpty().withMessage('City cannot be empty'),
-
-  body('state')
-    .optional()
-    .trim()
-    .notEmpty().withMessage('State cannot be empty'),
+  stateExistsValidator('state', true),
+  ...cityValidator('city', 'state', 'isManualCity', true),
 ];
 
 const completeProfileValidator = [
@@ -130,7 +123,15 @@ const searchOpportunitiesValidator = [
   query('categoryId').optional().isUUID().withMessage('categoryId must be a valid UUID'),
   query('budgetMin').optional().isFloat({ min: 0 }).withMessage('budgetMin must be a positive number'),
   query('budgetMax').optional().isFloat({ min: 0 }).withMessage('budgetMax must be a positive number'),
-  query('datePosted').optional().isIn(['24h', '7d', '30d']).withMessage('datePosted must be 24h, 7d, or 30d'),
+  query('city').optional().trim(),
+  query('state').optional().trim(),
+  query('datePosted')
+  .optional()
+  .custom((value) => {
+    if (['24h', '7d', '30d'].includes(value)) return true;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value) && !isNaN(Date.parse(value))) return true;
+    throw new Error('datePosted must be 24h, 7d, 30d, or a date in YYYY-MM-DD format');
+  }),
   query('workMode').optional().isIn(['REMOTE', 'ONSITE', 'HYBRID']).withMessage('Invalid Work Mode'),
   query('radiusKm').optional().isFloat({ min: 0, max: 500 }).withMessage('radiusKm must be 0-500'),
   query('lat').optional().isFloat({ min: -90, max: 90 }).withMessage('lat must be between -90 and 90'),

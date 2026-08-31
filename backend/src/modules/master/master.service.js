@@ -21,4 +21,20 @@ const listCategories = async () => {
   });
 };
 
-module.exports = { listDisabilityTypes, listCategories };
+const listStates = async () => {
+  return prisma.state.findMany({
+    where: { isActive: true },
+    select: { id: true, name: true, code: true },
+    orderBy: { name: 'asc' },
+  });
+};
+
+const listCities = async (stateId) => {
+  return prisma.city.findMany({
+    where: { isActive: true, ...(stateId && { stateId }) },
+    select: { id: true, name: true, stateId: true },
+    orderBy: { name: 'asc' },
+  });
+};
+
+module.exports = { listDisabilityTypes, listCategories, listStates, listCities };

@@ -64,7 +64,6 @@ const login = async (req, res, next) => {
   try {
     const { mobileNumber, password } = req.body;
     const { user, token, refreshToken } = await authService.login(mobileNumber, password);
-
     return success(res, 200, 'Login successful', {
       token,
       refreshToken,
@@ -74,6 +73,7 @@ const login = async (req, res, next) => {
         mobileNumber: user.mobileNumber,
         role: user.role,
         isMobileVerified: user.isMobileVerified,
+        isProfileCompleted: user.isProfileCompleted || false, // Include isProfileCompleted in the response
       },
     });
   } catch (err) {

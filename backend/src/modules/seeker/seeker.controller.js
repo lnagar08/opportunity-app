@@ -37,6 +37,7 @@ const updateMyProfile = async (req, res, next) => {
 const completeProfile = async (req, res, next) => {
   try {
     const profilePhotoUrl = req.file ? toFileUrl(req, req.file.filename) : undefined;
+    console.log(profilePhotoUrl);
     const user = await service.completeProfile(req.user.id, req.body, profilePhotoUrl);
     return success(res, 200, 'Profile completed successfully', user);
   } catch (err) { next(err); }
