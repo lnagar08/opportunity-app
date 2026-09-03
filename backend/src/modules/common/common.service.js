@@ -27,15 +27,41 @@ const getOrCreateConversation = async (userAId, userBId, applicationId = null) =
 };
 
 const listConversations = async (userId) => {
-  return prisma.conversation.findMany({
+  const conversations = await prisma.conversation.findMany({
     where: { OR: [{ userAId: userId }, { userBId: userId }] },
     orderBy: { updatedAt: 'desc' },
     include: {
-      userA: { select: { id: true, fullName: true, profilePhotoUrl: true } },
-      userB: { select: { id: true, fullName: true, profilePhotoUrl: true } },
+      userA: {
+        select: {
+          id: true, fullName: true, profilePhotoUrl: true, role: true,
+          giverProfile: { select: { organizationName: true } }, // null for Seekers, populated for Givers
+        },
+      },
+      userB: {
+        select: {
+          id: true, fullName: true, profilePhotoUrl: true, role: true,
+          giverProfile: { select: { organizationName: true } },
+        },
+      },
       messages: { orderBy: { createdAt: 'desc' }, take: 1 },
     },
   });
+
+  const unreadCounts = await prisma.message.groupBy({
+    by: ['conversationId'],
+    where: {
+      conversationId: { in: conversations.map((c) => c.id) },
+      senderId: { not: userId },
+      isRead: false,
+    },
+    _count: { _all: true },
+  });
+  const unreadByConversation = new Map(unreadCounts.map((u) => [u.conversationId, u._count._all]));
+
+  return conversations.map((c) => ({
+    ...c,
+    unreadCount: unreadByConversation.get(c.id) ?? 0,
+  }));
 };
 
 const sendMessage = async (senderId, { receiverId, text, applicationId }, mediaFiles = []) => {
@@ -88,6 +114,11 @@ const getMessages = async (userId, conversationId, { page = 1, limit = 30 }) => 
     throw new ApiError(403, 'You do not have permission to view this conversation');
   }
 
+  await prisma.message.updateMany({
+    where: { conversationId, senderId: { not: userId }, isRead: false },
+    data: { isRead: true },
+  });
+
   const [items, total] = await Promise.all([
     prisma.message.findMany({
       where: { conversationId },
@@ -99,10 +130,6 @@ const getMessages = async (userId, conversationId, { page = 1, limit = 30 }) => 
     prisma.message.count({ where: { conversationId } }),
   ]);
 
-  await prisma.message.updateMany({
-    where: { conversationId, senderId: { not: userId }, isRead: false },
-    data: { isRead: true },
-  });
 
   return { items, total, page: Number(page), limit: Number(limit) };
 };
@@ -223,10 +250,22 @@ const updateNotificationPreference = async (userId, payload) => {
   });
 };
 
+const getUnreadMessageCount = async (userId) => {
+  const count = await prisma.message.count({
+    where: {
+      senderId: { not: userId },
+      isRead: false,
+      conversation: { OR: [{ userAId: userId }, { userBId: userId }] },
+    },
+  });
+  return { count };
+};
+
 module.exports = {
   listConversations,
   sendMessage,
   getMessages,
+  getUnreadMessageCount,
   listNotifications,
   markNotificationRead,
   markNotificationsRead,

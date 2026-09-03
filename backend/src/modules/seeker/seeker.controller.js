@@ -30,7 +30,7 @@ const updateMyProfile = async (req, res, next) => {
   try {
     const profilePhotoUrl = req.file ? toFileUrl(req, req.file.filename) : undefined;
     const user = await service.updateMyProfile(req.user.id, req.body, profilePhotoUrl);
-    return success(res, 200, 'Profile updated successfully', user);
+    return success(res, 200, 'Profile saved successfully', user);
   } catch (err) { next(err); }
 };
 

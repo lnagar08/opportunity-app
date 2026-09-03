@@ -37,7 +37,7 @@ const sendMail = async ({ to, subject, html, text, replyTo }) => {
 
   try {
     await client.sendMail({
-      from: process.env.MAIL_FROM || process.env.SMTP_USER,
+      from: `Opportunity App <${process.env.MAIL_FROM || process.env.SMTP_USER}>`,
       to,
       subject,
       html,

@@ -113,10 +113,18 @@ const updateNotificationPreference = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
+const getUnreadMessageCount = async (req, res, next) => {
+  try {
+    const data = await service.getUnreadMessageCount(req.user.id);
+    return success(res, 200, 'Unread message count fetched successfully', data);
+  } catch (err) { next(err); }
+};
+
 module.exports = {
   listConversations,
   sendMessage,
   getMessages,
+  getUnreadMessageCount,
   listNotifications,
   markNotificationRead,
   markNotificationsRead,

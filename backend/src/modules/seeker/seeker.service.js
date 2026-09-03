@@ -699,7 +699,22 @@ const getApplicationDetails = async (userId, applicationId) => {
   if (!application || application.seekerId !== userId) {
     throw new ApiError(404, 'Application not found');
   }
-  return application;
+  // Conversation is looked up (never auto-created here) so the frontend
+  // can decide: existing conversationId -> open it directly; null ->
+  // "Open Chat" should POST /messages with applicationId set, which
+  // creates the conversation on that first message (see
+  // common.service.js:getOrCreateConversation).
+  const [userAId, userBId] = [userId, application.opportunity.giverId].sort();
+  const conversation = await prisma.conversation.findFirst({
+    where: { userAId, userBId, applicationId: application.id },
+    select: { id: true },
+  });
+
+  return {
+    ...application,
+    conversationId: conversation?.id ?? null,
+    hasConversation: Boolean(conversation),
+  };
 };
 
 const withdrawApplication = async (userId, applicationId) => {

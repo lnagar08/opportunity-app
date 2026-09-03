@@ -19,6 +19,7 @@ router.use(authenticate);
 
 // Screen 15/24/16: Messages / Chat
 router.get('/conversations', controller.listConversations);
+router.get('/conversations/unread-count', controller.getUnreadMessageCount);
 router.post(
   '/messages',
   upload.array('attachments', 5),
