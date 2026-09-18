@@ -5,10 +5,13 @@ const prisma = require('../config/db');
 const stateExistsValidator = (field = 'state', optional = false) => {
   const chain = body(field);
   (optional ? chain.optional({ checkFalsy: true }) : chain.notEmpty().withMessage('State is required'));
-  return chain.custom(async (value) => {
-    if (value === undefined) return true; // optional() already let it pass
-    const state = await prisma.state.findFirst({ where: { name: value, isActive: true } });
+  return chain.custom(async (value, { req }) => {
+    if (value === undefined || value === '') return true;
+    const state = await prisma.state.findFirst({
+      where: { name: { equals: value, mode: 'insensitive' }, isActive: true },
+    });
     if (!state) throw new Error('Invalid State selected');
+    req.body[field] = state.name; // normalize casing for storage
     return true;
   });
 };
@@ -24,21 +27,25 @@ const cityValidator = (cityField = 'city', stateField = 'state', manualField = '
   cityChain
     .isLength({ max: 100 }).withMessage('City must be under 100 characters')
     .custom(async (value, { req }) => {
-      if (value === undefined) return true;
+      if (value === undefined || value === '') return true;
       const isManual = req.body[manualField] === true || req.body[manualField] === 'true';
-      if (isManual) return true; // free text — no dropdown match required
+      if (isManual) return true;
 
-      const state = await prisma.state.findFirst({ where: { name: req.body[stateField], isActive: true } });
+      const state = await prisma.state.findFirst({
+        where: { name: { equals: req.body[stateField], mode: 'insensitive' }, isActive: true },
+      });
       if (!state) return true; // stateExistsValidator already reports this
 
-      const city = await prisma.city.findFirst({ where: { stateId: state.id, name: value, isActive: true } });
+      const city = await prisma.city.findFirst({
+        where: { stateId: state.id, name: { equals: value, mode: 'insensitive' }, isActive: true },
+      });
       if (!city) {
         throw new Error('Invalid City selected for this State — set isManualCity=true to add it manually');
       }
+      req.body[cityField] = city.name; // normalize casing for storage
       return true;
     });
 
   return [manualFlag, cityChain];
 };
-
 module.exports = { stateExistsValidator, cityValidator };

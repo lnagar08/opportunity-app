@@ -1,6 +1,7 @@
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const mime = require('mime-types');
 
 const uploadDir = process.env.UPLOAD_DIR || 'uploads';
 if (!fs.existsSync(uploadDir)) {
@@ -23,10 +24,20 @@ const allowedMime = [
 ];
 
 const fileFilter = (req, file, cb) => {
-  if (allowedMime.includes(file.mimetype)) {
+  console.log(file.mimetype)
+  let detectedMime = file.mimetype;
+  if (detectedMime === 'application/octet-stream') {
+    const lookupMime = mime.lookup(file.originalname);
+    if (lookupMime) {
+      detectedMime = lookupMime;
+    }
+  }
+  console.log(detectedMime)
+  if (allowedMime.includes(detectedMime)) {
+    file.mimetype = detectedMime; 
     cb(null, true);
   } else {
-    cb(new Error(`Unsupported file type: ${file.mimetype}`), false);
+    cb(new Error(`Unsupported file type: ${detectedMime}`), false);
   }
 };
 

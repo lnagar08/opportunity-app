@@ -52,9 +52,12 @@ const OpportunityDetail = () => {
 				>
 					Back to Opportunities
 				</Button>
-				<Button variantClassName="primary" variant="ghost" onClick={() => setInviteDialogOpen(true)} leftIcon={<Mail className="h-4 w-4" />}>
-					Invite Opportunity Seekers
-				</Button>
+				{opportunity.status != 'CLOSED' &&(
+					<Button variantClassName="primary" variant="ghost" onClick={() => setInviteDialogOpen(true)} leftIcon={<Mail className="h-4 w-4" />}>
+						Invite Opportunity Seekers
+					</Button>
+				)}
+				
 			</div>
 
 			<div className="grid grid-cols-1 gap-4 lg:grid-cols-3">

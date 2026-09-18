@@ -42,7 +42,8 @@ const createOpportunityValidator = [
   body('budgetAmount')
     .if(body('budgetType').equals('FIXED'))
     .notEmpty().withMessage('Budget Amount is required for Fixed budget type')
-    .isFloat({ gt: 0 }).withMessage('Budget Amount must be a positive number'),
+    .isFloat({ gt: 0 }).withMessage('Budget Amount must be a positive number')
+    .toFloat(),
 
   body('workMode')
     .notEmpty().withMessage('Remote / On-site is required')
@@ -65,11 +66,13 @@ const createOpportunityValidator = [
 
   body('latitude')
     .optional()
-    .isFloat({ min: -90, max: 90 }).withMessage('Latitude must be between -90 and 90'),
+    .isFloat({ min: -90, max: 90 }).withMessage('Latitude must be between -90 and 90')
+    .toFloat(),
 
   body('longitude')
     .optional()
-    .isFloat({ min: -180, max: 180 }).withMessage('Longitude must be between -180 and 180'),
+    .isFloat({ min: -180, max: 180 }).withMessage('Longitude must be between -180 and 180')
+    .toFloat(),
 
   body('opportunityDate')
     .optional({ checkFalsy: true })
@@ -107,7 +110,8 @@ const updateOpportunityValidator = [
 
   body('budgetAmount')
     .optional()
-    .isFloat({ gt: 0 }).withMessage('Budget Amount must be a positive number'),
+    .isFloat({ gt: 0 }).withMessage('Budget Amount must be a positive number')
+    .toFloat(),
 
   body('workMode')
     .optional()
@@ -115,11 +119,13 @@ const updateOpportunityValidator = [
 
   body('latitude')
     .optional()
-    .isFloat({ min: -90, max: 90 }).withMessage('Latitude must be between -90 and 90'),
+    .isFloat({ min: -90, max: 90 }).withMessage('Latitude must be between -90 and 90')
+    .toFloat(),
 
   body('longitude')
     .optional()
-    .isFloat({ min: -180, max: 180 }).withMessage('Longitude must be between -180 and 180'),
+    .isFloat({ min: -180, max: 180 }).withMessage('Longitude must be between -180 and 180')
+    .toFloat(),
 
   // ADD — validates against master data, but skips silently when the
   // value is empty (i.e. a REMOTE opportunity with no city/state at all)
