@@ -170,6 +170,15 @@ const listQueryValidator = [
   query('status').optional().isIn(['ACTIVE', 'CLOSED', 'DRAFT', 'DELETED']).withMessage('Invalid status filter'),
 ];
 
+const listAllApplicationsValidator = [
+  query('page').optional().isInt({ min: 1 }).withMessage('page must be a positive integer'),
+  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('limit must be 1-100'),
+  query('status').optional()
+    .isIn(['PENDING', 'SHORTLISTED', 'ACCEPTED', 'REJECTED', 'WITHDRAWN'])
+    .withMessage('Invalid status filter'),
+  query('opportunityId').optional().isUUID().withMessage('opportunityId must be a valid UUID'),
+];
+
 module.exports = {
   updateProfileValidator,
   createOpportunityValidator,
@@ -180,4 +189,5 @@ module.exports = {
   updateApplicationStatusValidator,
   listQueryValidator,
   mediaIdParamValidator,
+  listAllApplicationsValidator,
 };

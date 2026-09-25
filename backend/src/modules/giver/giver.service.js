@@ -44,6 +44,9 @@ const getDashboard = async (giverId) => {
       where: { giverId, status: 'ACTIVE' },
       orderBy: { createdAt: 'desc' },
       take: 10,
+      include: {
+        _count: { select: { applications: true } }, // ADDED
+      },
     }),
     prisma.application.findMany({
       where: { opportunity: { giverId } },
@@ -212,6 +215,13 @@ const getOpportunityDetails = async (giverId, opportunityId) => {
     include: {
       categories: { include: { category: true } },
       media: true,
+      giver: {
+        select: {
+          id: true,
+          fullName: true,
+          giverProfile: { select: { organizationName: true } },
+        },
+      },
       _count: { select: { applications: true } },
     },
   });
@@ -317,6 +327,37 @@ const updateApplicationStatus = async (giverId, applicationId, status) => {
   return updated;
 };
 
+// All applications across every opportunity this Giver owns — Screen 22
+// is scoped per-opportunity, but this gives a consolidated view (e.g. an
+// "All Applications" tab) without needing to loop over opportunities
+// client-side. opportunityId stays as an optional filter for narrowing
+// within this same endpoint, rather than duplicating the scoped one.
+const listAllApplications = async (giverId, { page = 1, limit = 20, status, opportunityId }) => {
+  const where = {
+    opportunity: { giverId },
+    ...(status && { status }),
+    ...(opportunityId && { opportunityId }),
+  };
+
+  const [items, total] = await Promise.all([
+    prisma.application.findMany({
+      where,
+      orderBy: { appliedAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: Number(limit),
+      include: {
+        opportunity: { select: { id: true, title: true, status: true } },
+        seeker: { select: { id: true, fullName: true, profilePhotoUrl: true } },
+        seekerProfile: { select: { skills: true, experience: true } },
+      },
+    }),
+    prisma.application.count({ where }),
+  ]);
+
+  return { items, total, page: Number(page), limit: Number(limit) };
+};
+
+
 module.exports = {
   getMyProfile,
   updateMyProfile,
@@ -331,4 +372,5 @@ module.exports = {
   listApplicationsForOpportunity,
   getApplicantProfile,
   updateApplicationStatus,
+  listAllApplications,
 };

@@ -153,6 +153,14 @@ const updateApplicationStatus = async (req, res, next) => {
   }
 };
 
+const listAllApplications = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20, status, opportunityId } = req.query;
+    const data = await service.listAllApplications(req.user.id, { page, limit, status, opportunityId });
+    return success(res, 200, 'Applications fetched successfully', data);
+  } catch (err) { next(err); }
+};
+
 module.exports = {
   getMyProfile,
   updateMyProfile,
@@ -167,4 +175,5 @@ module.exports = {
   listApplications,
   getApplicantProfile,
   updateApplicationStatus,
+  listAllApplications,
 };

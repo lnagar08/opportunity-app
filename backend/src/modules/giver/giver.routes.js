@@ -15,6 +15,7 @@ const {
   updateApplicationStatusValidator,
   listQueryValidator,
   mediaIdParamValidator,
+  listAllApplicationsValidator,
 } = require('./giver.validator');
 
 // All routes below require an authenticated Opportunity Giver
@@ -51,6 +52,8 @@ router.delete(
 );
 router.patch('/opportunities/:id/close', idParamValidator, validate, controller.closeOpportunity);
 router.delete('/opportunities/:id', idParamValidator, validate, controller.deleteOpportunity);
+
+router.get('/applications', listAllApplicationsValidator, validate, controller.listAllApplications);
 
 // Screen 22/23: Applications Received / Applicant Profile
 router.get(
