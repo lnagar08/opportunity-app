@@ -85,8 +85,10 @@ const changePassword = async (req, res, next) => {
 
 const requestChangeMobile = async (req, res, next) => {
   try {
-    await service.requestChangeMobile(req.user.id, req.body.newMobileNumber);
-    return success(res, 200, 'OTP sent to new Mobile Number');
+    const result = await service.requestChangeMobile(req.user.id, req.body.newMobileNumber);
+    return success(res, 200, 'OTP sent to new Mobile Number', {
+      otp: result
+    });
   } catch (err) { next(err); }
 };
 

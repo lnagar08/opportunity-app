@@ -3,7 +3,7 @@ const service = require('./report.service');
 
 const createReport = async (req, res, next) => {
   try {
-    const report = await service.createReport(req.user.id, req.body);
+    const report = await service.createReport(req.user.id, req.user.role, req.body); // role now passed through
     return success(res, 201, 'Report submitted. Our team will review it shortly.', report);
   } catch (err) { next(err); }
 };

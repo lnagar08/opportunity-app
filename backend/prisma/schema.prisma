@@ -99,9 +99,8 @@ enum NotificationType {
 }
 
 enum ReportTargetType {
-  USER
   OPPORTUNITY
-  MESSAGE
+  CONVERSATION
 }
 
 enum ReportStatus {

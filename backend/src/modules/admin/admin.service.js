@@ -266,22 +266,29 @@ const createAdmin = async (payload) => {
 
 // NEW helper
 const resolveReportTarget = async (targetType, targetId) => {
-  if (targetType === 'USER') {
-    return prisma.user.findUnique({
-      where: { id: targetId },
-      select: { id: true, fullName: true, role: true, status: true },
-    });
-  }
   if (targetType === 'OPPORTUNITY') {
     return prisma.opportunity.findUnique({
       where: { id: targetId },
       select: { id: true, title: true, description: true, status: true, giverId: true },
     });
   }
-  if (targetType === 'MESSAGE') {
-    return prisma.message.findUnique({
+  if (targetType === 'CONVERSATION') {
+    // Gives the Admin the two participants plus a short recent-message
+    // preview for context — not the full thread, since a moderation
+    // review needs "who's involved and roughly what's going on," not a
+    // complete transcript dump.
+    return prisma.conversation.findUnique({
       where: { id: targetId },
-      select: { id: true, text: true, senderId: true, conversationId: true, createdAt: true },
+      select: {
+        id: true,
+        userA: { select: { id: true, fullName: true, role: true } },
+        userB: { select: { id: true, fullName: true, role: true } },
+        messages: {
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+          select: { id: true, senderId: true, text: true, createdAt: true },
+        },
+      },
     });
   }
   return null;

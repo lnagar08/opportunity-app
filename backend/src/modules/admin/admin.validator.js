@@ -60,7 +60,7 @@ const listReportsValidator = [
   query('status').optional()
     .isIn(['PENDING', 'REVIEWED', 'DISMISSED', 'ACTION_TAKEN']).withMessage('Invalid status filter'),
   query('targetType').optional()
-    .isIn(['USER', 'OPPORTUNITY', 'MESSAGE']).withMessage('Invalid targetType filter'),
+  .isIn(['OPPORTUNITY', 'CONVERSATION']).withMessage('Invalid targetType filter'),
 ];
 
 const updateReportValidator = [

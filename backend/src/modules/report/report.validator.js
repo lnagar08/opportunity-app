@@ -2,8 +2,8 @@ const { body } = require('express-validator');
 
 const createReportValidator = [
   body('targetType')
-    .notEmpty().withMessage('targetType is required')
-    .isIn(['USER', 'OPPORTUNITY', 'MESSAGE']).withMessage('targetType must be USER, OPPORTUNITY, or MESSAGE'),
+  .notEmpty().withMessage('targetType is required')
+  .isIn(['OPPORTUNITY', 'CONVERSATION']).withMessage('targetType must be OPPORTUNITY or CONVERSATION'),
 
   body('targetId')
     .notEmpty().withMessage('targetId is required')

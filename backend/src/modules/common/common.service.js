@@ -223,7 +223,7 @@ const requestChangeMobile = async (userId, newMobileNumber) => {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, fullName: true } });
   sendOtpEmail(user?.email, user?.fullName, otpCode, 'CHANGE_MOBILE').catch(() => {});
 
-  return true;
+  return otpCode;
 };
 
 const confirmChangeMobile = async (userId, newMobileNumber, otp) => {
