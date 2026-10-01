@@ -296,7 +296,20 @@ const getApplicantProfile = async (giverId, applicationId) => {
     throw new ApiError(403, 'You do not have permission to view this application');
   }
 
-  return application;
+  // Conversation lookup only — never auto-created here. If null, the
+  // Giver's "Message" action should POST /messages with applicationId set,
+  // which creates the Conversation on that first message.
+  const [userAId, userBId] = [giverId, application.seekerId].sort();
+  const conversation = await prisma.conversation.findFirst({
+    where: { userAId, userBId, applicationId: application.id },
+    select: { id: true },
+  });
+
+  return {
+    ...application,
+    conversationId: conversation?.id ?? null,
+    hasConversation: Boolean(conversation),
+  };
 };
 
 const updateApplicationStatus = async (giverId, applicationId, status) => {
